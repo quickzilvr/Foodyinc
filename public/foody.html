@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Foody — Nutrición Completa en Botella</title>
+  <!-- Design System -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;1,400;1,600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/ds/tokens.css">
+  <link rel="stylesheet" href="/ds/components.css">
+  <style>
+    /* Estilos específicos de foody.html — página de tienda */
+
+    /* ── NAVBAR ─────────────────────────────── */
+    .nav{position:sticky;top:0;z-index:100;
+         background:rgba(245,240,232,.92);
+         backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+         border-bottom:1px solid var(--border);}
+    .nav__in{max-width:1280px;margin:0 auto;padding:0 var(--sp-8);
+             height:72px;display:flex;align-items:center;
+             justify-content:space-between;gap:var(--sp-7);}
+    .nav__logo{font-family:var(--ff-display);font-size:1.6rem;font-weight:700;
+               color:var(--text);text-decoration:none;letter-spacing:-.03em;}
+    .nav__links{display:flex;align-items:center;gap:var(--sp-8);}
+    .nav__link{font-size:.875rem;font-weight:500;color:var(--text-2);
+               text-decoration:none;cursor:pointer;transition:color var(--ease);
+               position:relative;}
+    .nav__link::after{content:'';position:absolute;bottom:-2px;left:0;
+                      width:0;height:1px;background:var(--text);transition:width var(--ease);}
+    .nav__link:hover{color:var(--text);}
+    .nav__link:hover::after{width:100%;}
+    .nav__right{display:flex;align-items:center;gap:var(--sp-3);}
+
+    .cart-pill{display:flex;align-items:center;gap:6px;padding:8px 16px;
+               background:var(--surface);border:1.5px solid var(--border);
+               border-radius:var(--r-full);font-size:.875rem;font-weight:600;
+               cursor:pointer;transition:all var(--ease);color:var(--text);}
+    .cart-pill:hover{border-color:var(--text);box-shadow:var(--sh-sm);}
+    .cart-pill svg{flex-shrink:0;color:var(--text-2);}
+    .cart-pill__count{background:var(--accent);color:#fff;width:20px;height:20px;
+                      border-radius:50%;display:flex;align-items:center;
+                      justify-content:center;font-size:11px;font-weight:700;}
+    .user-pill{background:transparent;border:1.5px solid var(--border);
+               border-radius:var(--r-full);padding:8px 16px;font-size:.875rem;
+               font-weight:600;cursor:pointer;transition:all var(--ease);
+               color:var(--text-2);font-family:var(--ff-body);}
+    .user-pill:hover{border-color:var(--text);color:var(--text);}
+
+    /* ── HERO ───────────────────────────────── */
+    .hero{min-height:calc(100vh - 72px);display:flex;align-items:center;
+          padding:var(--sp-13) 0;position:relative;overflow:hidden;}
+    .hero__watermark{position:absolute;bottom:-.05em;left:-.03em;
+                     font-family:var(--ff-display);font-size:28vw;font-weight:800;
+                     color:transparent;-webkit-text-stroke:1px var(--border);
+                     letter-spacing:-.04em;line-height:1;
+                     pointer-events:none;user-select:none;white-space:nowrap;}
+    .hero__grid{position:relative;z-index:1;display:grid;
+                grid-template-columns:1fr 1fr;gap:var(--sp-12);align-items:center;}
+    .hero__col{display:flex;flex-direction:column;gap:var(--sp-5);}
+    .hero__title em{font-style:italic;color:var(--gold);}
+    .hero__ctas{display:flex;gap:var(--sp-3);flex-wrap:wrap;}
+    .hero__proof{display:flex;align-items:center;gap:var(--sp-6);
+                 padding-top:var(--sp-5);border-top:1px solid var(--border);}
+    .hero__stat-n{font-family:var(--ff-display);font-size:1.6rem;font-weight:700;}
+    .hero__stat-l{font-size:.72rem;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;}
+    .hero__divider{width:1px;height:40px;background:var(--border);}
+
+    .hero__visual{display:flex;justify-content:center;align-items:center;position:relative;}
+    .hero__vis-wrap{position:relative;width:100%;max-width:520px;}
+    .hero__img{width:100%;aspect-ratio:4/3;object-fit:cover;
+               border-radius:var(--r-xl);box-shadow:var(--sh-xl);display:block;}
+    @keyframes floatUp{0%,100%{transform:translateY(0);}50%{transform:translateY(-12px);}}
+    .hero__vis-wrap{animation:floatUp 5s ease-in-out infinite;}
+
+    .hero__chip{position:absolute;background:var(--surface);
+                border:1px solid var(--border);border-radius:var(--r-lg);
+                padding:var(--sp-3) var(--sp-4);box-shadow:var(--sh-md);
+                display:flex;align-items:center;gap:var(--sp-3);}
+    .hero__chip-icon{width:36px;height:36px;background:var(--gold-lt);
+                     border-radius:var(--r-sm);display:flex;align-items:center;
+                     justify-content:center;color:var(--gold-dk);flex-shrink:0;}
+    .hero__chip-label{font-size:.8rem;font-weight:600;line-height:1.2;}
+    .hero__chip-sub{font-size:.7rem;color:var(--text-3);}
+    .hero__chip--tl{top:-16px;left:-16px;}
+    .hero__chip--br{bottom:-16px;right:-16px;}
+
+    /* ── STRIP ──────────────────────────────── */
+    .strip{background:var(--accent);padding:12px 0;overflow:hidden;}
+    .strip__track{display:flex;gap:var(--sp-10);
+                  animation:ticker 22s linear infinite;white-space:nowrap;}
+    @keyframes ticker{from{transform:translateX(0);}to{transform:translateX(-50%);}}
+    .strip__item{display:flex;align-items:center;gap:var(--sp-3);
+                 font-size:.8rem;font-weight:500;color:rgba(255,255,255,.85);
+                 letter-spacing:.03em;flex-shrink:0;}
+    .strip__dot{width:4px;height:4px;border-radius:50%;background:var(--gold);flex-shrink:0;}
+
+    /* ── PRODUCTS ───────────────────────────── */
+    .products{background:var(--surface);}
+
+    .p-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-5);}
+
+    .p-card{background:var(--bg);border:1px solid var(--border);
+            border-radius:var(--r-xl);overflow:hidden;
+            transition:all var(--ease-slow);}
+    .p-card:hover{transform:translateY(-6px);box-shadow:var(--sh-xl);
+                  border-color:var(--border-2);}
+    .p-card__vis{height:260px;overflow:hidden;position:relative;}
+    .p-card__img{width:100%;height:100%;object-fit:cover;
+                 transition:transform var(--ease-slow);}
+    .p-card:hover .p-card__img{transform:scale(1.05);}
+    .p-card__badge{position:absolute;top:var(--sp-3);right:var(--sp-3);z-index:1;}
+    .p-card__body{padding:var(--sp-5);}
+    .p-card__name{font-family:var(--ff-display);font-size:1.4rem;font-weight:600;margin-bottom:4px;}
+    .p-card__desc{font-size:.875rem;color:var(--text-2);line-height:1.65;margin-bottom:var(--sp-4);}
+
+    .nut-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;
+              background:var(--border);border:1px solid var(--border);
+              border-radius:var(--r-md);overflow:hidden;margin-bottom:var(--sp-4);}
+    .nut-cell{background:var(--surface);padding:10px 12px;}
+    .nut-cell__l{font-size:.68rem;color:var(--text-3);text-transform:uppercase;
+                 letter-spacing:.06em;font-weight:500;margin-bottom:2px;}
+    .nut-cell__v{font-size:.95rem;font-weight:700;}
+
+    .p-card__ft{display:flex;align-items:center;justify-content:space-between;
+                padding-top:var(--sp-4);border-top:1px solid var(--border);}
+    .p-card__price{font-family:var(--ff-display);font-size:1.8rem;font-weight:700;}
+    .p-card__price sup{font-family:var(--ff-body);font-size:.875rem;
+                       color:var(--text-3);font-weight:400;}
+
+    /* ── FEATURES ───────────────────────────── */
+    .features{background:var(--bg);}
+    .features__grid{display:grid;grid-template-columns:1fr 1fr;
+                    gap:var(--sp-13) var(--sp-13);align-items:center;}
+    .features__list{display:flex;flex-direction:column;gap:var(--sp-6);}
+    .feat{display:flex;gap:var(--sp-4);align-items:flex-start;}
+    .feat__icon{width:48px;height:48px;min-width:48px;background:var(--surface);
+                border:1px solid var(--border);border-radius:var(--r-md);
+                display:flex;align-items:center;justify-content:center;
+                color:var(--text-2);}
+    .feat__title{font-family:var(--ff-display);font-size:1.1rem;font-weight:600;margin-bottom:4px;}
+    .feat__desc{font-size:.875rem;color:var(--text-2);line-height:1.65;}
+
+    .nut-panel{background:var(--gold-lt);border:1px solid #DDD0AA;
+               border-radius:var(--r-xl);padding:var(--sp-7);}
+    .nut-panel__title{font-family:var(--ff-display);font-size:1.6rem;font-weight:700;
+                      margin:var(--sp-3) 0 var(--sp-6);}
+    .bar-row{display:flex;flex-direction:column;gap:6px;margin-bottom:var(--sp-5);}
+    .bar-header{display:flex;justify-content:space-between;
+                font-size:.82rem;font-weight:500;color:var(--text-2);}
+    .bar-track{height:6px;background:rgba(0,0,0,.1);border-radius:var(--r-full);overflow:hidden;}
+    .bar-fill{height:100%;background:var(--gold-dk);border-radius:var(--r-full);}
+    .nut-total{background:var(--surface);border-radius:var(--r-md);
+               border:1px solid var(--border);padding:var(--sp-4);}
+    .nut-total__l{font-size:.75rem;color:var(--text-3);margin-bottom:4px;}
+    .nut-total__v{font-family:var(--ff-display);font-size:2rem;font-weight:700;}
+    .nut-total__s{font-size:.75rem;color:var(--text-3);margin-top:2px;}
+
+    /* ── HOW ────────────────────────────────── */
+    .how{background:var(--surface);}
+    .steps{display:grid;grid-template-columns:repeat(3,1fr);
+           gap:var(--sp-9);margin-top:var(--sp-10);position:relative;}
+    .steps::before{content:'';position:absolute;top:24px;
+                   left:calc(16.67% + 24px);right:calc(16.67% + 24px);
+                   height:1px;background:var(--border);}
+    .step{display:flex;flex-direction:column;gap:var(--sp-4);position:relative;z-index:1;}
+    .step__num{width:48px;height:48px;background:var(--surface);
+               border:1.5px solid var(--border-2);border-radius:50%;
+               display:flex;align-items:center;justify-content:center;
+               font-family:var(--ff-display);font-size:1.1rem;font-weight:700;}
+    .step__title{font-family:var(--ff-display);font-size:1.15rem;font-weight:600;}
+    .step__desc{font-size:.875rem;color:var(--text-2);line-height:1.7;}
+
+    /* ── TESTIMONIALS ───────────────────────── */
+    .testi{background:var(--bg);}
+    .testi__grid{display:grid;grid-template-columns:repeat(3,1fr);
+                 gap:var(--sp-5);margin-top:var(--sp-10);}
+    .t-card{background:var(--surface);border:1px solid var(--border);
+            border-radius:var(--r-xl);padding:var(--sp-6);
+            display:flex;flex-direction:column;gap:var(--sp-4);
+            transition:all var(--ease);}
+    .t-card:hover{box-shadow:var(--sh-md);transform:translateY(-3px);}
+    .t-card__stars{color:var(--gold);font-size:.875rem;letter-spacing:2px;}
+    .t-card__text{font-family:var(--ff-display);font-size:1.05rem;
+                  line-height:1.65;font-style:italic;flex:1;}
+    .t-card__author{display:flex;align-items:center;gap:var(--sp-3);
+                    padding-top:var(--sp-4);border-top:1px solid var(--border);}
+    .t-card__avatar{width:40px;height:40px;border-radius:50%;background:var(--gold-lt);
+                    border:1px solid #DDD0AA;display:flex;align-items:center;
+                    justify-content:center;font-family:var(--ff-display);
+                    font-size:.95rem;font-weight:700;color:var(--gold-dk);flex-shrink:0;}
+    .t-card__name{font-weight:600;font-size:.875rem;}
+    .t-card__role{font-size:.75rem;color:var(--text-3);}
+
+    /* ── SUB BANNER ─────────────────────────── */
+    .sub{background:var(--accent);color:#fff;padding:var(--sp-13) 0;}
+    .sub__grid{display:grid;grid-template-columns:1fr auto;
+               gap:var(--sp-10);align-items:center;}
+    .sub__eyebrow{color:var(--gold);}
+    .sub__eyebrow::before{background:var(--gold);}
+    .sub h2{font-family:var(--ff-display);font-size:clamp(2rem,4vw,3.2rem);
+            font-weight:700;line-height:1.1;margin:var(--sp-3) 0 var(--sp-4);}
+    .sub p{font-size:1rem;color:rgba(255,255,255,.65);max-width:480px;line-height:1.75;}
+    .sub__right{display:flex;flex-direction:column;gap:var(--sp-4);min-width:280px;}
+    .sub__perks{display:flex;flex-direction:column;gap:var(--sp-3);}
+    .sub__perk{display:flex;align-items:center;gap:var(--sp-3);
+               font-size:.875rem;color:rgba(255,255,255,.8);}
+    .sub__perk-check{width:20px;height:20px;background:var(--gold);
+                     border-radius:50%;display:flex;align-items:center;
+                     justify-content:center;flex-shrink:0;color:#fff;}
+    .sub__note{font-size:.72rem;color:rgba(255,255,255,.3);text-align:center;}
+
+    /* ── CART ───────────────────────────────── */
+    .cart-sec{background:var(--surface);}
+    .cart-sec__grid{display:grid;grid-template-columns:1fr 360px;
+                    gap:var(--sp-9);align-items:flex-start;}
+    .cart-box{background:var(--bg);border:1px solid var(--border);
+              border-radius:var(--r-xl);overflow:hidden;}
+    .cart-empty{padding:var(--sp-12);text-align:center;color:var(--text-3);}
+    .cart-empty__icon{width:48px;height:48px;margin:0 auto var(--sp-3);opacity:.3;}
+    .cart-empty__txt{font-size:.875rem;}
+
+    .c-item{display:flex;align-items:center;gap:var(--sp-4);
+            padding:var(--sp-4) var(--sp-5);border-bottom:1px solid var(--border);
+            background:var(--surface);margin:1px;border-radius:var(--r-md);}
+    .c-item__thumb{width:56px;height:56px;border-radius:var(--r-md);
+                   object-fit:cover;flex-shrink:0;border:1px solid var(--border);}
+    .c-item__info{flex:1;}
+    .c-item__name{font-weight:600;font-size:.875rem;}
+    .c-item__price{font-size:.78rem;color:var(--text-3);}
+    .qty-ctrl{display:flex;align-items:center;gap:4px;background:var(--bg);
+              border:1px solid var(--border);border-radius:var(--r-full);padding:2px;}
+    .qty-btn{width:28px;height:28px;border:none;background:transparent;
+             border-radius:50%;cursor:pointer;display:flex;align-items:center;
+             justify-content:center;font-size:1rem;font-weight:700;
+             color:var(--text);transition:background var(--ease);}
+    .qty-btn:hover{background:var(--border);}
+    .qty-val{font-weight:700;font-size:.875rem;min-width:24px;text-align:center;}
+    .c-item__sub{font-weight:700;font-size:.875rem;min-width:80px;text-align:right;}
+    .c-item__rm{background:none;border:none;cursor:pointer;color:var(--text-3);
+                display:flex;align-items:center;transition:color var(--ease);padding:4px;}
+    .c-item__rm:hover{color:#b91c1c;}
+
+    .cart-summary{background:var(--bg);border:1px solid var(--border);
+                  border-radius:var(--r-xl);padding:var(--sp-6);
+                  display:flex;flex-direction:column;gap:var(--sp-4);
+                  position:sticky;top:88px;}
+    .cart-summary__title{font-family:var(--ff-display);font-size:1.2rem;font-weight:600;}
+    .sum-line{display:flex;justify-content:space-between;
+              font-size:.875rem;color:var(--text-2);}
+    .sum-total{display:flex;justify-content:space-between;font-weight:700;
+               font-size:1.15rem;padding-top:var(--sp-4);border-top:1px solid var(--border);}
+    .sum-note{display:flex;align-items:center;justify-content:center;gap:6px;
+              font-size:.72rem;color:var(--text-3);}
+
+    /* ── FOOTER ─────────────────────────────── */
+    footer{background:#0A0A0A;color:rgba(255,255,255,.8);}
+    .footer__top{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;
+                 gap:var(--sp-9);padding:var(--sp-12) 0;
+                 border-bottom:1px solid rgba(255,255,255,.06);}
+    .footer__logo{font-family:var(--ff-display);font-size:1.5rem;font-weight:700;color:#fff;}
+    .footer__tagline{font-size:.875rem;color:rgba(255,255,255,.4);
+                     line-height:1.7;max-width:240px;margin-top:var(--sp-3);}
+    .footer__col h5{font-size:.68rem;font-weight:600;text-transform:uppercase;
+                    letter-spacing:.1em;color:rgba(255,255,255,.3);margin-bottom:var(--sp-4);}
+    .footer__col ul{list-style:none;display:flex;flex-direction:column;gap:var(--sp-3);}
+    .footer__col a{font-size:.875rem;color:rgba(255,255,255,.55);text-decoration:none;
+                   transition:color var(--ease);}
+    .footer__col a:hover{color:#fff;}
+    .footer__bottom{display:flex;justify-content:space-between;
+                    align-items:center;padding:var(--sp-4) 0;}
+    .footer__copy{font-size:.72rem;color:rgba(255,255,255,.25);}
+
+    /* ── AUTH MODAL ─────────────────────────── */
+    .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);
+             backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+             z-index:200;align-items:center;justify-content:center;}
+    .overlay.open{display:flex;}
+    .modal{background:var(--surface);border-radius:var(--r-xl);padding:var(--sp-7);
+           width:100%;max-width:420px;margin:var(--sp-4);box-shadow:var(--sh-xl);
+           position:relative;}
+    .modal__close{position:absolute;top:var(--sp-4);right:var(--sp-4);
+                  width:32px;height:32px;border:none;background:var(--bg);
+                  border-radius:50%;cursor:pointer;display:flex;align-items:center;
+                  justify-content:center;color:var(--text-2);font-size:.9rem;
+                  transition:all var(--ease);}
+    .modal__close:hover{background:var(--border);color:var(--text);}
+    .modal__title{font-family:var(--ff-display);font-size:1.8rem;font-weight:700;
+                  margin:var(--sp-3) 0 var(--sp-5);}
+    .field{display:flex;flex-direction:column;gap:6px;margin-bottom:var(--sp-4);}
+    .field label{font-size:.72rem;font-weight:600;text-transform:uppercase;
+                 letter-spacing:.06em;color:var(--text-2);}
+    .field input{width:100%;padding:12px 16px;border:1.5px solid var(--border);
+                 border-radius:var(--r-md);font-family:var(--ff-body);font-size:1rem;
+                 background:var(--bg);color:var(--text);outline:none;
+                 transition:border-color var(--ease);}
+    .field input:focus{border-color:var(--accent);background:var(--surface);}
+    .modal__err{background:#fef2f2;color:#b91c1c;padding:10px 14px;
+                border-radius:var(--r-md);font-size:.875rem;
+                margin-bottom:var(--sp-4);border:1px solid #fecaca;}
+    .modal__sw{text-align:center;margin-top:var(--sp-4);font-size:.875rem;color:var(--text-3);}
+    .modal__sw a{color:var(--text);cursor:pointer;font-weight:600;
+                 text-decoration:underline;text-underline-offset:3px;}
+
+    /* ── TOAST ──────────────────────────────── */
+    .toast{position:fixed;bottom:var(--sp-5);right:var(--sp-5);
+           background:var(--accent);color:#fff;padding:14px 20px;
+           border-radius:var(--r-lg);font-size:.875rem;font-weight:600;
+           z-index:300;transform:translateY(120%);opacity:0;
+           transition:all .35s cubic-bezier(.34,1.56,.64,1);
+           box-shadow:var(--sh-lg);max-width:300px;}
+    .toast.show{transform:translateY(0);opacity:1;}
+
+    /* ── RESPONSIVE ─────────────────────────── */
+    @media(max-width:1024px){
+      .hero__grid,.features__grid,.sub__grid,.cart-sec__grid{grid-template-columns:1fr;}
+      .hero__visual,.features__right{display:none;}
+      .hero__col{align-items:center;text-align:center;}
+      .hero__ctas,.hero__proof{justify-content:center;}
+      .p-grid{grid-template-columns:1fr 1fr;}
+      .testi__grid{grid-template-columns:1fr 1fr;}
+      .steps{grid-template-columns:1fr;}
+      .steps::before{display:none;}
+      .footer__top{grid-template-columns:1fr 1fr;}
+    }
+    @media(max-width:640px){
+      :root{--sp-13:64px;--sp-12:48px;}
+      .p-grid{grid-template-columns:1fr;}
+      .testi__grid{grid-template-columns:1fr;}
+      .footer__top{grid-template-columns:1fr;}
+      .nav__links{display:none;}
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── NAVBAR ───────────────────────────────── -->
+<nav class="nav">
+  <div class="nav__in">
+    <a class="nav__logo" href="/">Foody</a>
+    <div class="nav__links">
+      <span class="nav__link" onclick="document.getElementById('productos').scrollIntoView({behavior:'smooth'})">Productos</span>
+      <span class="nav__link" onclick="document.getElementById('beneficios').scrollIntoView({behavior:'smooth'})">Beneficios</span>
+      <span class="nav__link" onclick="document.getElementById('testimonios').scrollIntoView({behavior:'smooth'})">Historias</span>
+      <span class="nav__link" onclick="document.getElementById('suscripcion').scrollIntoView({behavior:'smooth'})">Suscripción</span>
+    </div>
+    <div class="nav__right">
+      <button class="user-pill" id="userBtn" onclick="openAuth()">Iniciar sesión</button>
+      <div class="cart-pill" onclick="document.getElementById('carrito').scrollIntoView({behavior:'smooth'})">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"/></svg>
+        <span>Carrito</span>
+        <div class="cart-pill__count" id="cartCount">0</div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ── HERO ─────────────────────────────────── -->
+<section class="hero">
+  <div class="hero__watermark" aria-hidden="true">Foody</div>
+  <div class="wrap">
+    <div class="hero__grid">
+      <div class="hero__col">
+        <div class="eyebrow">Nutrición de élite · Chile</div>
+        <h1 class="d1 hero__title">Tu comida.<br><em>En 30 segundos.</em></h1>
+        <p class="lead">Nutrición completa en cada botella. Sin sacrificar sabor, sin perder tiempo. Diseñado para los que van al máximo.</p>
+        <div class="hero__ctas">
+          <button class="btn btn-dark btn-lg" onclick="document.getElementById('productos').scrollIntoView({behavior:'smooth'})">Comprar ahora →</button>
+          <button class="btn btn-ghost btn-lg" onclick="document.getElementById('beneficios').scrollIntoView({behavior:'smooth'})">Cómo funciona</button>
+        </div>
+        <div class="hero__proof">
+          <div><div class="hero__stat-n">5.000+</div><div class="hero__stat-l">Clientes</div></div>
+          <div class="hero__divider"></div>
+          <div><div class="hero__stat-n">25+</div><div class="hero__stat-l">Nutrientes</div></div>
+          <div class="hero__divider"></div>
+          <div><div class="hero__stat-n">4.9★</div><div class="hero__stat-l">Valoración</div></div>
+        </div>
+      </div>
+      <div class="hero__visual">
+        <div class="hero__vis-wrap">
+          <img class="hero__img" src="/images/foody-vanilla.jpg" alt="Foody Vainilla — Nutrición Completa">
+          <div class="hero__chip hero__chip--tl">
+            <div class="hero__chip-icon">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" d="M6 12h12M4 9v6M20 9v6M2 10v4M22 10v4"/></svg>
+            </div>
+            <div><div class="hero__chip-label">25g Proteína</div><div class="hero__chip-sub">Por botella</div></div>
+          </div>
+          <div class="hero__chip hero__chip--br">
+            <div class="hero__chip-icon">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg>
+            </div>
+            <div><div class="hero__chip-label">Listo al instante</div><div class="hero__chip-sub">Sin preparación</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── STRIP ─────────────────────────────────── -->
+<div class="strip">
+  <div class="strip__track" id="stripTrack"></div>
+</div>
+
+<!-- ── PRODUCTOS ─────────────────────────────── -->
+<section id="productos" class="products">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">Catálogo</div>
+      <h2 class="d2" style="margin-top:var(--sp-4);">Elige tu Foody</h2>
+      <p class="lead" style="margin-top:var(--sp-4);max-width:500px;margin-left:auto;margin-right:auto;">
+        Tres sabores. Una fórmula. Nutrición completa en cada sorbo.
+      </p>
+    </div>
+    <div class="p-grid" id="productGrid">
+      <div style="grid-column:1/-1;text-align:center;padding:4rem;color:var(--text-3);">Cargando productos...</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── BENEFICIOS ────────────────────────────── -->
+<section id="beneficios" class="features">
+  <div class="wrap">
+    <div class="features__grid">
+      <div>
+        <div class="eyebrow">Por qué Foody</div>
+        <h2 class="d2" style="margin:var(--sp-4) 0 var(--sp-7);">Diseñado para<br>vivir al máximo</h2>
+        <div class="features__list">
+          <div class="feat">
+            <div class="feat__icon">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M12 7v5l2.5 2.5"/></svg>
+            </div>
+            <div><div class="feat__title">Listo en 30 segundos</div><p class="feat__desc">Sin cocinar, sin ensuciar. Abre, bebe, conquista el día.</p></div>
+          </div>
+          <div class="feat">
+            <div class="feat__icon">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.5"/><ellipse cx="12" cy="12" rx="10" ry="4"/><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(120 12 12)"/></svg>
+            </div>
+            <div><div class="feat__title">Formulación científica</div><p class="feat__desc">Cada botella cubre el 30% de tus necesidades diarias de nutrientes esenciales.</p></div>
+          </div>
+          <div class="feat">
+            <div class="feat__icon">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.75 7.2C18.5 4.18 14.5 3 11 3 6.5 3 3 6.5 3 11c0 4.1 3.7 8.68 8.5 10 1.18-2.1 1.8-4.33 1.8-6.5C13.3 9.8 11.5 7 9 6"/><path stroke-linecap="round" d="M3 21l6-6"/></svg>
+            </div>
+            <div><div class="feat__title">Ingredientes reales</div><p class="feat__desc">Sin colorantes artificiales ni conservantes. Solo lo que tu cuerpo necesita.</p></div>
+          </div>
+          <div class="feat">
+            <div class="feat__icon">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0v10l-8 4m-8-4V7m16 0L12 12M4 7l8 5m0 0v10"/></svg>
+            </div>
+            <div><div class="feat__title">Delivery a todo Chile</div><p class="feat__desc">En tu puerta en 24–48 horas. Suscripciones con envío siempre gratis.</p></div>
+          </div>
+        </div>
+      </div>
+      <div class="nut-panel">
+        <div class="eyebrow" style="color:var(--gold-dk);">Valor nutricional</div>
+        <div class="nut-panel__title">Lo que contiene<br>cada Foody</div>
+        <div class="bar-row">
+          <div class="bar-header"><span>Proteína</span><span>25g · 50% VD</span></div>
+          <div class="bar-track"><div class="bar-fill" style="width:50%"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-header"><span>Carbohidratos</span><span>38g · 13% VD</span></div>
+          <div class="bar-track"><div class="bar-fill" style="width:13%"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-header"><span>Grasas saludables</span><span>12g · 17% VD</span></div>
+          <div class="bar-track"><div class="bar-fill" style="width:17%"></div></div>
+        </div>
+        <div class="bar-row" style="margin-bottom:var(--sp-5);">
+          <div class="bar-header"><span>Fibra</span><span>7g · 28% VD</span></div>
+          <div class="bar-track"><div class="bar-fill" style="width:28%"></div></div>
+        </div>
+        <div class="nut-total">
+          <div class="nut-total__l">Calorías totales</div>
+          <div class="nut-total__v">380 kcal</div>
+          <div class="nut-total__s">Reemplaza una comida completa</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CÓMO FUNCIONA ──────────────────────────── -->
+<section class="how">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">El proceso</div>
+      <h2 class="d2" style="margin-top:var(--sp-4);">Así de simple</h2>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step__num">1</div>
+        <div class="step__title">Elige tu sabor</div>
+        <p class="step__desc">Chocolate, Vainilla o Frutilla. Todos con la misma nutrición de élite. Tú decides cuál te gusta más.</p>
+      </div>
+      <div class="step">
+        <div class="step__num">2</div>
+        <div class="step__title">Recíbelo en casa</div>
+        <p class="step__desc">Delivery express a todo Chile. Suscríbete y recibe tu Foody cada semana sin tener que pensar.</p>
+      </div>
+      <div class="step">
+        <div class="step__num">3</div>
+        <div class="step__title">Vive al máximo</div>
+        <p class="step__desc">Abre, bebe, conquista. 30 segundos para una nutrición que te acompaña todo el día.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── TESTIMONIOS ───────────────────────────── -->
+<section id="testimonios" class="testi">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">Historias reales</div>
+      <h2 class="d2" style="margin-top:var(--sp-4);">Lo que dicen</h2>
+    </div>
+    <div class="testi__grid">
+      <div class="t-card">
+        <div class="t-card__stars">★★★★★</div>
+        <p class="t-card__text">"Cambió mi rutina de mañana completamente. Antes perdía 20 minutos en el desayuno. Ahora en 30 segundos estoy lista y bien nutrida."</p>
+        <div class="t-card__author">
+          <div class="t-card__avatar">M</div>
+          <div><div class="t-card__name">María González</div><div class="t-card__role">Abogada · Santiago</div></div>
+        </div>
+      </div>
+      <div class="t-card">
+        <div class="t-card__stars">★★★★★</div>
+        <p class="t-card__text">"Post-entrenamiento perfecto. La proteína es real, el sabor es increíble y no tiene ese gusto a suplemento barato."</p>
+        <div class="t-card__author">
+          <div class="t-card__avatar">C</div>
+          <div><div class="t-card__name">Carlos Muñoz</div><div class="t-card__role">Entrenador Personal · Viña del Mar</div></div>
+        </div>
+      </div>
+      <div class="t-card">
+        <div class="t-card__stars">★★★★★</div>
+        <p class="t-card__text">"Sale más barato que el casino, es más sano y no hago fila. Calculé los números y no vuelvo atrás."</p>
+        <div class="t-card__author">
+          <div class="t-card__avatar">J</div>
+          <div><div class="t-card__name">Juan Pérez</div><div class="t-card__role">Estudiante · Concepción</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── SUSCRIPCIÓN ───────────────────────────── -->
+<section id="suscripcion" class="sub">
+  <div class="wrap">
+    <div class="sub__grid">
+      <div>
+        <div class="eyebrow sub__eyebrow">Suscripción</div>
+        <h2>Ahorra 20%<br>cada semana</h2>
+        <p>Recibe tu Foody en la puerta sin pensar. Cambia, pausa o cancela cuando quieras. Sin compromisos.</p>
+      </div>
+      <div class="sub__right">
+        <div class="sub__perks">
+          <div class="sub__perk">
+            <div class="sub__perk-check"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div>
+            20% de descuento permanente
+          </div>
+          <div class="sub__perk">
+            <div class="sub__perk-check"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div>
+            Envío gratis a todo Chile
+          </div>
+          <div class="sub__perk">
+            <div class="sub__perk-check"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div>
+            Cambia de sabor cuando quieras
+          </div>
+          <div class="sub__perk">
+            <div class="sub__perk-check"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div>
+            Cancela en cualquier momento
+          </div>
+        </div>
+        <button class="btn btn-white btn-lg btn-full" onclick="openSubscribeModal()">Comenzar suscripción →</button>
+        <div class="sub__note">Sin tarjeta de crédito para empezar</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CARRITO ───────────────────────────────── -->
+<section id="carrito" class="cart-sec">
+  <div class="wrap">
+    <div style="margin-bottom:var(--sp-9);">
+      <div class="eyebrow">Resumen</div>
+      <h2 class="d2" style="margin-top:var(--sp-4);">Tu carrito</h2>
+    </div>
+    <div class="cart-sec__grid">
+      <div class="cart-box" id="cartBox">
+        <div class="cart-empty">
+          <div class="cart-empty__icon">
+            <svg fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"/></svg>
+          </div>
+          <p class="cart-empty__txt">Tu carrito está vacío.<br>Elige un Foody para empezar.</p>
+        </div>
+      </div>
+      <div class="cart-summary" id="cartSummary" style="display:none;">
+        <div class="cart-summary__title">Resumen de compra</div>
+        <div class="sum-line"><span>Subtotal</span><span id="sumSub">$0</span></div>
+        <div class="sum-line"><span>Envío</span><span style="color:#2d9a4e;font-weight:600;">Gratis</span></div>
+        <div class="sum-total"><span>Total</span><span id="sumTotal">$0</span></div>
+        <button class="btn btn-dark btn-full btn-lg" onclick="checkout()">Completar compra →</button>
+        <button class="btn btn-ghost btn-full" onclick="document.getElementById('productos').scrollIntoView({behavior:'smooth'})">Seguir comprando</button>
+        <div class="sum-note">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"/></svg>
+          Pago seguro · Envío a todo Chile
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FOOTER ────────────────────────────────── -->
+<footer>
+  <div class="wrap">
+    <div class="footer__top">
+      <div>
+        <div class="footer__logo">Foody</div>
+        <p class="footer__tagline">Nutrición completa en botella. Diseñado en Chile para los que viven al máximo.</p>
+      </div>
+      <div class="footer__col">
+        <h5>Productos</h5>
+        <ul>
+          <li><a href="#">Foody Chocolate</a></li>
+          <li><a href="#">Foody Vainilla</a></li>
+          <li><a href="#">Foody Frutilla</a></li>
+          <li><a href="#">Packs</a></li>
+        </ul>
+      </div>
+      <div class="footer__col">
+        <h5>Empresa</h5>
+        <ul>
+          <li><a href="#">Sobre nosotros</a></li>
+          <li><a href="#">Ciencia y fórmula</a></li>
+          <li><a href="#">Blog</a></li>
+          <li><a href="#">Trabaja con nosotros</a></li>
+        </ul>
+      </div>
+      <div class="footer__col">
+        <h5>Ayuda</h5>
+        <ul>
+          <li><a href="#">Preguntas frecuentes</a></li>
+          <li><a href="#">Contacto</a></li>
+          <li><a href="#">Política de envíos</a></li>
+          <li><a href="#">Términos y condiciones</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer__bottom">
+      <p class="footer__copy">© 2026 Foody Chile. Todos los derechos reservados.</p>
+      <p class="footer__copy">Hecho en Santiago, Chile</p>
+    </div>
+  </div>
+</footer>
+
+<!-- ── AUTH MODAL ────────────────────────────── -->
+<div class="overlay" id="authModal" onclick="if(event.target===this)closeAuth()">
+  <div class="modal">
+    <button class="modal__close" onclick="closeAuth()">✕</button>
+    <div id="loginForm">
+      <div class="eyebrow">Acceso</div>
+      <div class="modal__title">Bienvenido de vuelta</div>
+      <div id="loginErr" class="modal__err" style="display:none;"></div>
+      <div class="field"><label>Email</label><input type="email" id="loginEmail" placeholder="tu@email.com"></div>
+      <div class="field"><label>Contraseña</label><input type="password" id="loginPw" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()"></div>
+      <button class="btn btn-dark btn-full" style="margin-top:4px;" onclick="login()">Iniciar sesión</button>
+      <div class="modal__sw">¿No tienes cuenta? <a onclick="showRegister()">Regístrate gratis</a></div>
+    </div>
+    <div id="registerForm" style="display:none;">
+      <div class="eyebrow">Registro</div>
+      <div class="modal__title">Únete a Foody</div>
+      <div id="registerErr" class="modal__err" style="display:none;"></div>
+      <div class="field"><label>Nombre completo</label><input type="text" id="regName" placeholder="Tu nombre"></div>
+      <div class="field"><label>Email</label><input type="email" id="regEmail" placeholder="tu@email.com"></div>
+      <div class="field"><label>Contraseña</label><input type="password" id="regPw" placeholder="Mínimo 6 caracteres" onkeydown="if(event.key==='Enter')register()"></div>
+      <button class="btn btn-dark btn-full" style="margin-top:4px;" onclick="register()">Crear cuenta</button>
+      <div class="modal__sw">¿Ya tienes cuenta? <a onclick="showLogin()">Inicia sesión</a></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="/app.js"></script>
+<script>
+  let cart = [], currentUser = null;
+  let authToken = localStorage.getItem('foody_token');
+
+  /* ── Mapeo de imágenes por sabor ── */
+  function productImg(flavor) {
+    if (!flavor) return '/images/foody-vanilla.jpg';
+    const f = flavor.toLowerCase();
+    if (f.includes('choc')) return '/images/foody-chocolate.jpg';
+    if (f.includes('frutilla') || f.includes('straw')) return '/images/foody-frutilla.jpg';
+    return '/images/foody-vanilla.jpg';
+  }
+
+  /* ── STRIP ── */
+  const items = ['5.000+ clientes satisfechos','25+ nutrientes por botella','Envío express a todo Chile',
+    'Sin colorantes artificiales','4.9 estrellas promedio','Formulación científica',
+    'Cancela cuando quieras','Producción local en Chile'];
+  const all = [...items,...items];
+  document.getElementById('stripTrack').innerHTML =
+    all.map(t=>`<div class="strip__item"><div class="strip__dot"></div><span>${t}</span></div>`).join('');
+
+  /* ── UTILS ── */
+  const clp = n => '$' + Number(n).toLocaleString('es-CL');
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+
+  /* ── AUTH ── */
+  function openAuth(){ if(currentUser){logout();return;} document.getElementById('authModal').classList.add('open'); }
+  function closeAuth(){ document.getElementById('authModal').classList.remove('open'); }
+  function showLogin(){ document.getElementById('loginForm').style.display=''; document.getElementById('registerForm').style.display='none'; document.getElementById('loginErr').style.display='none'; }
+  function showRegister(){ document.getElementById('loginForm').style.display='none'; document.getElementById('registerForm').style.display=''; document.getElementById('registerErr').style.display='none'; }
+
+  async function login(){
+    const email=document.getElementById('loginEmail').value.trim();
+    const pw=document.getElementById('loginPw').value;
+    const err=document.getElementById('loginErr'); err.style.display='none';
+    try {
+      const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pw})});
+      const d=await r.json();
+      if(!r.ok){err.textContent=d.error;err.style.display='';return;}
+      authToken=d.token; currentUser=d.user;
+      localStorage.setItem('foody_token',authToken);
+      updateBtn(); closeAuth(); toast(`Bienvenido, ${currentUser.name.split(' ')[0]}!`);
+    } catch { err.textContent='Error de conexión.'; err.style.display=''; }
+  }
+
+  async function register(){
+    const name=document.getElementById('regName').value.trim();
+    const email=document.getElementById('regEmail').value.trim();
+    const pw=document.getElementById('regPw').value;
+    const err=document.getElementById('registerErr'); err.style.display='none';
+    try {
+      const r=await fetch('/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,email,password:pw})});
+      const d=await r.json();
+      if(!r.ok){err.textContent=d.error;err.style.display='';return;}
+      authToken=d.token; currentUser=d.user;
+      localStorage.setItem('foody_token',authToken);
+      updateBtn(); closeAuth(); toast(`Cuenta creada. Bienvenido, ${currentUser.name.split(' ')[0]}!`);
+    } catch { err.textContent='Error de conexión.'; err.style.display=''; }
+  }
+
+  async function logout(){
+    if(authToken) await fetch('/api/auth/logout',{method:'POST',headers:{'x-auth-token':authToken}}).catch(()=>{});
+    authToken=null; currentUser=null; localStorage.removeItem('foody_token');
+    updateBtn(); toast('Sesión cerrada');
+  }
+
+  function updateBtn(){
+    document.getElementById('userBtn').textContent = currentUser ? `${currentUser.name.split(' ')[0]} · Salir` : 'Iniciar sesión';
+  }
+
+  async function checkSession(){
+    if(!authToken) return;
+    try {
+      const r=await fetch('/api/auth/me',{headers:{'x-auth-token':authToken}});
+      if(r.ok){ currentUser=await r.json(); updateBtn(); }
+      else { localStorage.removeItem('foody_token'); authToken=null; }
+    } catch {}
+  }
+
+  /* ── PRODUCTS ── */
+  const demo=[
+    {id:'chocolate-001',name:'Foody Chocolate',flavor:'Chocolate Puro',description:'Proteína de suero premium con cacao 100% natural. Cremoso, indulgente y completamente nutritivo.',calories:380,protein:25,carbs:38,fat:12,fiber:7,price:2500},
+    {id:'vainilla-001',name:'Foody Vainilla',flavor:'Vainilla Francesa',description:'Clásico y equilibrado. Suave, cremoso y listo para acompañarte en cualquier momento del día.',calories:350,protein:25,carbs:35,fat:8,fiber:5,price:2200},
+    {id:'frutilla-001',name:'Foody Frutilla',flavor:'Frutilla Silvestre',description:'Frutal, fresco y refrescante. La energía natural de la frutilla con toda la nutrición de Foody.',calories:320,protein:22,carbs:42,fat:6,fiber:6,price:2300},
+  ];
+
+  async function loadProducts(){
+    try {
+      const r=await fetch('/api/products');
+      if(!r.ok) throw 0;
+      const p=await r.json();
+      renderProducts(p.length?p:demo);
+    } catch { renderProducts(demo); }
+  }
+
+  function renderProducts(list){
+    document.getElementById('productGrid').innerHTML = list.map(p=>`
+      <div class="p-card">
+        <div class="p-card__vis">
+          <img class="p-card__img" src="${productImg(p.flavor)}" alt="${p.name}" loading="lazy">
+          <div class="p-card__badge"><span class="tag tag-gold">${p.flavor||'Original'}</span></div>
+        </div>
+        <div class="p-card__body">
+          <div class="p-card__name">${p.name}</div>
+          <p class="p-card__desc">${p.description}</p>
+          <div class="nut-grid">
+            <div class="nut-cell"><div class="nut-cell__l">Calorías</div><div class="nut-cell__v">${p.calories} kcal</div></div>
+            <div class="nut-cell"><div class="nut-cell__l">Proteína</div><div class="nut-cell__v">${p.protein}g</div></div>
+            <div class="nut-cell"><div class="nut-cell__l">Carbos</div><div class="nut-cell__v">${p.carbs}g</div></div>
+            <div class="nut-cell"><div class="nut-cell__l">Fibra</div><div class="nut-cell__v">${p.fiber}g</div></div>
+          </div>
+          <div class="p-card__ft">
+            <div class="p-card__price">${clp(p.price)}<sup> CLP</sup></div>
+            <button class="btn btn-dark" onclick="addToCart('${p.id}','${p.name}',${p.price},'${p.flavor}')">Agregar</button>
+          </div>
+        </div>
+      </div>`).join('');
+  }
+
+  /* ── CART ── */
+  const CART_EMPTY_SVG = `<svg fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"/></svg>`;
+  const REMOVE_SVG = `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" d="M6 18 18 6M6 6l12 12"/></svg>`;
+
+  function addToCart(id,name,price,flavor){
+    const ex=cart.find(i=>i.id===id);
+    if(ex) ex.quantity++; else cart.push({id,name,price,flavor,quantity:1});
+    renderCart(); toast(`${name} agregado`);
+  }
+  function changeQty(id,d){
+    const i=cart.find(x=>x.id===id); if(!i) return;
+    i.quantity+=d; if(i.quantity<=0) cart=cart.filter(x=>x.id!==id);
+    renderCart();
+  }
+  function removeFromCart(id){ cart=cart.filter(i=>i.id!==id); renderCart(); }
+
+  function renderCart(){
+    const box=document.getElementById('cartBox');
+    const sum=document.getElementById('cartSummary');
+    const qty=cart.reduce((s,i)=>s+i.quantity,0);
+    const total=cart.reduce((s,i)=>s+i.price*i.quantity,0);
+    document.getElementById('cartCount').textContent=qty;
+    if(!cart.length){
+      box.innerHTML=`<div class="cart-empty"><div class="cart-empty__icon">${CART_EMPTY_SVG}</div><p class="cart-empty__txt">Tu carrito está vacío.<br>Elige un Foody para empezar.</p></div>`;
+      sum.style.display='none'; return;
+    }
+    box.innerHTML=cart.map(i=>`
+      <div class="c-item">
+        <img class="c-item__thumb" src="${productImg(i.flavor)}" alt="${i.name}">
+        <div class="c-item__info"><div class="c-item__name">${i.name}</div><div class="c-item__price">${clp(i.price)} c/u</div></div>
+        <div class="qty-ctrl">
+          <button class="qty-btn" onclick="changeQty('${i.id}',-1)">−</button>
+          <span class="qty-val">${i.quantity}</span>
+          <button class="qty-btn" onclick="changeQty('${i.id}',1)">+</button>
+        </div>
+        <div class="c-item__sub">${clp(i.price*i.quantity)}</div>
+        <button class="c-item__rm" onclick="removeFromCart('${i.id}')" aria-label="Eliminar">${REMOVE_SVG}</button>
+      </div>`).join('');
+    document.getElementById('sumSub').textContent=clp(total);
+    document.getElementById('sumTotal').textContent=clp(total);
+    sum.style.display='flex';
+  }
+
+  async function checkout(){
+    if(!cart.length) return;
+    const items=cart.map(i=>({product_id:i.id,quantity:i.quantity,price:i.price}));
+    const total=cart.reduce((s,i)=>s+i.price*i.quantity,0);
+    try {
+      const r=await fetch('/api/orders',{method:'POST',
+        headers:{'Content-Type':'application/json',...(authToken?{'x-auth-token':authToken}:{})},
+        body:JSON.stringify({user_id:currentUser?.id||'guest',items})});
+      if(r.ok){ toast(`Orden confirmada — ${clp(total)}`); cart=[]; renderCart(); }
+      else toast('Error al procesar la orden.');
+    } catch { toast(`Orden registrada — ${clp(total)}`); cart=[]; renderCart(); }
+  }
+
+  function openSubscribeModal(){
+    if(!currentUser){ toast('Inicia sesión para suscribirte'); openAuth(); return; }
+    toast('Suscripciones disponibles próximamente');
+  }
+
+  checkSession();
+  loadProducts();
+</script>
+</body>
+</html>

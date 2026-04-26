@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YFoods Chile - Bebidas Nutritivas</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <div class="logo">🥤 YFoods Chile MVP</div>
+      <div class="nav-links">
+        <a href="#home">Inicio</a>
+        <a href="#products">Productos</a>
+        <a href="#about">Sobre Nosotros</a>
+        <a href="#cart">Carrito (0)</a>
+      </div>
+    </div>
+  </nav>
+
+  <section id="home" class="hero">
+    <div class="container">
+      <h1>Nutrición Líquida. Tu Comida Saludable en 30 Segundos</h1>
+      <p>Bebidas 100% nutritivas que reemplazan una comida completa</p>
+      <button class="cta-button" onclick="scrollTo('products')">Ver Productos</button>
+    </div>
+  </section>
+
+  <section id="products" class="products">
+    <div class="container">
+      <h2>Nuestros Productos</h2>
+      <div class="product-grid" id="productGrid">
+        <!-- Se llena dinámicamente -->
+      </div>
+    </div>
+  </section>
+
+  <section id="about" class="about">
+    <div class="container">
+      <h2>Dirigido a:</h2>
+      <div class="targets">
+        <div class="target-card">
+          <h3>💼 Profesionales</h3>
+          <p>Desayunos y almuerzos rápidos sin sacrificar nutrición</p>
+        </div>
+        <div class="target-card">
+          <h3>💪 Deportistas</h3>
+          <p>Nutrición completa para tu rendimiento</p>
+        </div>
+        <div class="target-card">
+          <h3>👨‍🎓 Estudiantes</h3>
+          <p>Energía y foco para tu día</p>
+        </div>
+        <div class="target-card">
+          <h3>👴 Personas Mayores</h3>
+          <p>Nutrientes específicos para tu salud</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cart-section">
+    <div class="container">
+      <h2>Tu Carrito</h2>
+      <div id="cart" class="cart">
+        <p>Carrito vacío</p>
+      </div>
+      <button class="checkout-button" onclick="checkout()">Procesar Compra</button>
+    </div>
+  </section>
+
+  <footer>
+    <p>&copy; 2026 YFoods Chile MVP. Todos los derechos reservados.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
