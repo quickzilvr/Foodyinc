@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const supabase = require('./database');
 const { hashPassword, verifyPassword, generateToken } = require('./utils');
@@ -11,10 +12,10 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(bodyParser.json());
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/', (_req, res) => res.sendFile('public/foody.html', { root: __dirname }));
-app.get('/admin', (_req, res) => res.sendFile('public/admin.html', { root: __dirname }));
+app.get('/', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'foody.html')));
+app.get('/admin', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 
 // ==================== MIDDLEWARE ====================
 async function requireAuth(req, res, next) {
