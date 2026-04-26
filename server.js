@@ -6,6 +6,7 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const supabase = require('./database');
 const { hashPassword, verifyPassword, generateToken } = require('./utils');
+const { sendWelcome, sendOrderConfirmation, sendAdminOrderAlert, sendSubscriptionConfirmation } = require('./mailer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -65,6 +66,7 @@ app.post('/api/auth/register', validate(['email', 'password', 'name']), async (r
   const token = generateToken();
   await supabase.from('sessions').insert({ token, user_id: id });
   res.status(201).json({ token, user: { id, email, name } });
+  sendWelcome({ email: email.toLowerCase().trim(), name }).catch(() => {});
 });
 
 app.post('/api/auth/login', validate(['email', 'password']), async (req, res) => {
@@ -215,6 +217,14 @@ app.post('/api/orders', validate(['items']), async (req, res) => {
     return res.status(500).json({ error: itemsError.message });
   }
   res.status(201).json({ order_id, total, message: 'Orden creada exitosamente' });
+
+  // Emails post-respuesta (no bloquean al cliente)
+  const { data: userData } = await supabase.from('users').select('name, email').eq('id', user_id).single();
+  const emailItems = items.map(i => ({ product_name: i.name || i.product_id, quantity: i.quantity, price: i.price }));
+  if (userData?.email) {
+    sendOrderConfirmation({ email: userData.email, name: userData.name, orderId: order_id, items: emailItems, total }).catch(() => {});
+  }
+  sendAdminOrderAlert({ orderId: order_id, customerName: userData?.name, customerEmail: userData?.email, total, items: emailItems }).catch(() => {});
 });
 
 app.put('/api/orders/:id/status', async (req, res) => {
@@ -233,11 +243,20 @@ app.post('/api/subscriptions', validate(['product_id', 'quantity', 'price']), as
   const { product_id, frequency, quantity, price } = req.body;
   const validFreq = ['weekly', 'biweekly', 'monthly'];
   const id = uuidv4();
+  const chosenFreq = validFreq.includes(frequency) ? frequency : 'weekly';
   const { error } = await supabase.from('subscriptions').insert({
-    id, user_id, product_id, frequency: validFreq.includes(frequency) ? frequency : 'weekly', quantity, price
+    id, user_id, product_id, frequency: chosenFreq, quantity, price
   });
   if (error) return res.status(500).json({ error: error.message });
   res.status(201).json({ id, message: 'Suscripción creada exitosamente' });
+
+  const [{ data: userData }, { data: productData }] = await Promise.all([
+    supabase.from('users').select('name, email').eq('id', user_id).single(),
+    supabase.from('products').select('name').eq('id', product_id).single(),
+  ]);
+  if (userData?.email) {
+    sendSubscriptionConfirmation({ email: userData.email, name: userData.name, productName: productData?.name || product_id, frequency: chosenFreq, quantity, price }).catch(() => {});
+  }
 });
 
 app.get('/api/subscriptions/:userId', async (req, res) => {
