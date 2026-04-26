@@ -299,6 +299,115 @@ app.get('/api/production-costs/:productId', async (req, res) => {
 // ==================== HEALTH ====================
 app.get('/health', (_req, res) => res.json({ status: 'OK', timestamp: new Date().toISOString() }));
 
+// ==================== WHATSAPP WEBHOOK ====================
+// Verificación del webhook (Meta llama esto al configurar)
+app.get('/webhook/whatsapp', (req, res) => {
+  const mode      = req.query['hub.mode'];
+  const token     = req.query['hub.verify_token'];
+  const challenge = req.query['hub.challenge'];
+  if (mode === 'subscribe' && token === process.env.WHATSAPP_VERIFY_TOKEN) {
+    console.log('Webhook WhatsApp verificado');
+    return res.status(200).send(challenge);
+  }
+  res.status(403).send('Forbidden');
+});
+
+// Recepción de mensajes
+app.post('/webhook/whatsapp', async (req, res) => {
+  res.sendStatus(200); // Responder rápido a Meta
+
+  const body = req.body;
+  if (body.object !== 'whatsapp_business_account') return;
+
+  const entry    = body.entry?.[0];
+  const change   = entry?.changes?.[0];
+  const message  = change?.value?.messages?.[0];
+  if (!message || message.type !== 'text') return;
+
+  const from = message.from;           // número del remitente
+  const text = message.text.body.trim().toLowerCase();
+
+  let reply = '';
+
+  try {
+    if (text === 'stats' || text === 'estadísticas' || text === 'estadisticas') {
+      const { data } = await supabase.rpc('get_admin_stats');
+      const s = data;
+      reply = `*Foody — Stats del día*\n\n` +
+        `💰 Ingresos hoy: $${Number(s.today_revenue).toLocaleString('es-CL')}\n` +
+        `📦 Órdenes hoy: ${s.today_orders}\n` +
+        `⏳ Pendientes: ${s.pending_orders}\n` +
+        `🔄 Suscripciones activas: ${s.active_subscriptions}\n` +
+        `👥 Clientes: ${s.total_customers}\n` +
+        `💵 Ingresos totales: $${Number(s.total_revenue).toLocaleString('es-CL')}`;
+
+    } else if (text === 'ordenes' || text === 'órdenes') {
+      const { data } = await supabase.rpc('get_admin_orders');
+      const pending = data.filter(o => o.status === 'pending').slice(0, 5);
+      if (pending.length === 0) {
+        reply = '✅ No hay órdenes pendientes.';
+      } else {
+        reply = `*Órdenes pendientes (${pending.length}):*\n\n` +
+          pending.map(o =>
+            `#${o.id.slice(0,8).toUpperCase()} — ${o.customer_name || 'Invitado'} — $${Number(o.total).toLocaleString('es-CL')}`
+          ).join('\n');
+      }
+
+    } else if (text.startsWith('confirmar ')) {
+      const shortId = text.replace('confirmar ', '').trim().toUpperCase();
+      const { data: orders } = await supabase.rpc('get_admin_orders');
+      const order = orders?.find(o => o.id.slice(0,8).toUpperCase() === shortId);
+      if (!order) {
+        reply = `❌ No encontré la orden #${shortId}`;
+      } else {
+        await supabase.from('orders').update({ status: 'confirmed' }).eq('id', order.id);
+        reply = `✅ Orden #${shortId} confirmada.`;
+      }
+
+    } else if (text === 'clientes') {
+      const { data } = await supabase.rpc('get_admin_stats');
+      reply = `👥 Clientes registrados: ${data.total_customers}`;
+
+    } else if (text === 'ayuda' || text === 'help' || text === 'menu' || text === 'menú') {
+      reply = `*Foody Bot — Comandos disponibles:*\n\n` +
+        `📊 *stats* — KPIs del día\n` +
+        `📦 *ordenes* — Órdenes pendientes\n` +
+        `✅ *confirmar XXXXXXXX* — Confirmar una orden\n` +
+        `👥 *clientes* — Total de clientes\n` +
+        `🌐 *panel* — Link al admin\n\n` +
+        `También puedes hacerme cualquier pregunta sobre Foody.`;
+
+    } else if (text === 'panel') {
+      reply = '🌐 Panel de administración:\nhttps://foodyinc.vercel.app/admin';
+
+    } else {
+      // Cualquier otra cosa → respuesta genérica
+      reply = `No reconocí ese comando. Escribe *ayuda* para ver los comandos disponibles.`;
+    }
+  } catch (e) {
+    reply = `⚠️ Error procesando el comando: ${e.message}`;
+  }
+
+  if (reply) {
+    await sendWhatsAppMessage(from, reply).catch(console.error);
+  }
+});
+
+async function sendWhatsAppMessage(to, text) {
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const token         = process.env.WHATSAPP_ACCESS_TOKEN;
+  await fetch(`https://graph.facebook.com/v19.0/${phoneNumberId}/messages`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      to,
+      type: 'text',
+      text: { body: text }
+    })
+  });
+}
+
 app.use((_req, res) => res.status(404).json({ error: 'Ruta no encontrada' }));
 app.use((err, _req, res, _next) => { console.error(err.stack); res.status(500).json({ error: 'Error interno del servidor' }); });
 
