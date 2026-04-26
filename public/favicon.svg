@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Fondo oscuro con bordes redondeados (estilo app icon) -->
+  <rect width="32" height="32" rx="7" fill="#1C1C1C"/>
+  <!-- Línea dorada sutil arriba -->
+  <rect x="9" y="5" width="14" height="1.5" rx="0.75" fill="#C8A55E" opacity="0.4"/>
+  <!-- F — barra vertical -->
+  <rect x="9" y="7" width="3.5" height="18" rx="1.5" fill="#C8A55E"/>
+  <!-- F — barra horizontal superior -->
+  <rect x="9" y="7" width="14" height="3.5" rx="1.5" fill="#C8A55E"/>
+  <!-- F — barra horizontal media -->
+  <rect x="9" y="14.2" width="10" height="3" rx="1.5" fill="#C8A55E"/>
+</svg>
