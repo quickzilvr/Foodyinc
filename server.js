@@ -13,6 +13,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true })); // Necesario para el retorno de Transbank
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'foody.html')));
@@ -235,6 +236,23 @@ app.put('/api/orders/:id/status', async (req, res) => {
   if (error) return res.status(500).json({ error: error.message });
   if (!data?.length) return res.status(404).json({ error: 'Orden no encontrada' });
   res.json({ message: 'Estado actualizado' });
+
+  // Notificación WhatsApp al cliente (post-respuesta, no bloquea)
+  const order = data[0];
+  if (order?.user_id) {
+    const { data: user } = await supabase.from('users').select('name, phone').eq('id', order.user_id).single();
+    if (user?.phone) {
+      const shortId = req.params.id.slice(0, 8).toUpperCase();
+      const msgs = {
+        confirmed: `✅ ¡Hola ${user.name}! Tu pedido *#${shortId}* de Foody fue confirmado. Pronto empezamos a prepararlo 🚀`,
+        preparing: `🥤 ¡${user.name}, estamos preparando tu Foody! Pedido *#${shortId}* en proceso.`,
+        shipped:   `🚚 ¡Tu Foody va en camino! Pedido *#${shortId}*. Te avisamos cuando llegue.`,
+        delivered: `✅ ¡Tu Foody llegó, ${user.name}! Esperamos que lo disfrutes 💪 Cualquier consulta escríbenos.`,
+        cancelled: `Tu pedido *#${shortId}* fue cancelado. Si tienes dudas contáctanos directo por aquí.`
+      };
+      if (msgs[status]) sendWhatsAppMessage(user.phone, msgs[status]).catch(() => {});
+    }
+  }
 });
 
 // ==================== SUSCRIPCIONES ====================
@@ -295,6 +313,569 @@ app.get('/api/production-costs/:productId', async (req, res) => {
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
+
+// ==================== PAGOS — TRANSBANK WEBPAY PLUS ====================
+const { WebpayPlus, Options, Environment, IntegrationCommerceCodes, IntegrationApiKeys } = require('transbank-sdk');
+
+// Mapa en memoria: tbk_token → { order_id, total }
+// El round-trip suele durar segundos; reinicio de servidor durante pago es improbable en MVP.
+const pendingTbk = new Map();
+
+function tbkTx() {
+  if (process.env.NODE_ENV === 'production') {
+    return new WebpayPlus.Transaction(new Options(
+      process.env.TBK_COMMERCE_CODE,
+      process.env.TBK_API_KEY,
+      Environment.Production
+    ));
+  }
+  return new WebpayPlus.Transaction(new Options(
+    IntegrationCommerceCodes.WEBPAY_PLUS,
+    IntegrationApiKeys.WEBPAY,
+    Environment.Integration
+  ));
+}
+
+// Paso 1: crear orden en DB e iniciar transacción con Transbank
+app.post('/api/payment/transbank/init', async (req, res) => {
+  const { items, user_id } = req.body;
+  if (!Array.isArray(items) || items.length === 0)
+    return res.status(400).json({ error: 'El carrito está vacío' });
+
+  const total = Math.round(items.reduce((s, i) => s + i.price * i.quantity, 0));
+  if (total <= 0) return res.status(400).json({ error: 'Total inválido' });
+
+  const order_id = uuidv4();
+  const { error: oErr } = await supabase.from('orders').insert({
+    id: order_id, user_id: user_id || null, total, status: 'pending'
+  });
+  if (oErr) return res.status(500).json({ error: oErr.message });
+
+  const orderItems = items.map(i => ({
+    id: uuidv4(), order_id,
+    product_id: i.product_id, quantity: i.quantity, price: i.price
+  }));
+  const { error: iErr } = await supabase.from('order_items').insert(orderItems);
+  if (iErr) {
+    await supabase.from('orders').delete().eq('id', order_id);
+    return res.status(500).json({ error: iErr.message });
+  }
+
+  const buy_order = order_id.replace(/-/g, '').substring(0, 26);
+  const session_id = `${user_id || 'guest'}-${Date.now()}`.substring(0, 61);
+  const return_url = process.env.TRANSBANK_RETURN_URL;
+
+  try {
+    const { token, url } = await tbkTx().create(buy_order, session_id, total, return_url);
+    pendingTbk.set(token, { order_id, total });
+    res.json({ token, url });
+  } catch (err) {
+    await supabase.from('orders').delete().eq('id', order_id);
+    console.error('[Transbank] init error:', err.message);
+    res.status(500).json({ error: 'Error al iniciar pago. Intenta de nuevo.' });
+  }
+});
+
+// Paso 2: Transbank hace POST aquí tras el pago
+app.post('/payment/transbank/return', async (req, res) => {
+  const { token_ws, TBK_TOKEN } = req.body;
+
+  // Usuario canceló o hubo timeout (no hay token_ws, solo TBK_TOKEN)
+  if (!token_ws) {
+    const pending = pendingTbk.get(TBK_TOKEN);
+    if (pending) {
+      await supabase.from('orders').update({ status: 'cancelled' }).eq('id', pending.order_id);
+      pendingTbk.delete(TBK_TOKEN);
+    }
+    return res.redirect('/?payment=cancelled');
+  }
+
+  // Timeout con ambos tokens (flujo raro de Transbank)
+  if (token_ws && TBK_TOKEN) {
+    const pending = pendingTbk.get(token_ws);
+    if (pending) {
+      await supabase.from('orders').update({ status: 'cancelled' }).eq('id', pending.order_id);
+      pendingTbk.delete(token_ws);
+    }
+    return res.redirect('/?payment=cancelled');
+  }
+
+  // Flujo normal: confirmar con Transbank
+  const pending = pendingTbk.get(token_ws);
+  if (!pending) return res.redirect('/?payment=error');
+
+  try {
+    const result = await tbkTx().commit(token_ws);
+    pendingTbk.delete(token_ws);
+
+    if (result.response_code === 0) {
+      await supabase.from('orders').update({ status: 'confirmed' }).eq('id', pending.order_id);
+
+      // Emails post-pago (no bloquean al cliente)
+      const { data: userData } = await supabase
+        .from('users').select('name, email').eq('id', pending.order_id).single();
+      if (userData?.email) {
+        const { data: orderItems } = await supabase
+          .from('order_items').select('*, products(name)').eq('order_id', pending.order_id);
+        const emailItems = (orderItems || []).map(i => ({
+          product_name: i.products?.name || i.product_id, quantity: i.quantity, price: i.price
+        }));
+        sendOrderConfirmation({ email: userData.email, name: userData.name, orderId: pending.order_id, items: emailItems, total: pending.total }).catch(() => {});
+        sendAdminOrderAlert({ orderId: pending.order_id, customerName: userData.name, customerEmail: userData.email, total: pending.total, items: emailItems }).catch(() => {});
+      }
+
+      return res.redirect(`/?payment=success&order_id=${pending.order_id}&total=${pending.total}`);
+    } else {
+      await supabase.from('orders').update({ status: 'cancelled' }).eq('id', pending.order_id);
+      return res.redirect('/?payment=rejected');
+    }
+  } catch (err) {
+    console.error('[Transbank] commit error:', err.message);
+    if (pending) {
+      await supabase.from('orders').update({ status: 'cancelled' }).eq('id', pending.order_id);
+      pendingTbk.delete(token_ws);
+    }
+    return res.redirect('/?payment=error');
+  }
+});
+
+// ==================== PAGOS — MERCADO PAGO ====================
+const { MercadoPagoConfig, Preference } = require('mercadopago');
+
+function mpClient() {
+  return new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
+}
+
+// Paso 1: crear orden en DB y preferencia de MP
+app.post('/api/payment/mp/init', async (req, res) => {
+  const { items, user_id } = req.body;
+  if (!Array.isArray(items) || items.length === 0)
+    return res.status(400).json({ error: 'El carrito está vacío' });
+
+  const total = Math.round(items.reduce((s, i) => s + i.price * i.quantity, 0));
+  if (total <= 0) return res.status(400).json({ error: 'Total inválido' });
+
+  const order_id = uuidv4();
+  const { error: oErr } = await supabase.from('orders').insert({
+    id: order_id, user_id: user_id || null, total, status: 'pending'
+  });
+  if (oErr) return res.status(500).json({ error: oErr.message });
+
+  const orderItems = items.map(i => ({
+    id: uuidv4(), order_id,
+    product_id: i.product_id, quantity: i.quantity, price: i.price
+  }));
+  const { error: iErr } = await supabase.from('order_items').insert(orderItems);
+  if (iErr) {
+    await supabase.from('orders').delete().eq('id', order_id);
+    return res.status(500).json({ error: iErr.message });
+  }
+
+  const base = process.env.BASE_URL || `http://localhost:${PORT}`;
+
+  try {
+    const pref = new Preference(mpClient());
+    const result = await pref.create({
+      body: {
+        external_reference: order_id,
+        items: items.map(i => ({
+          id: i.product_id,
+          title: i.name || i.product_id,
+          quantity: Number(i.quantity),
+          unit_price: Number(i.price),
+          currency_id: 'CLP'
+        })),
+        back_urls: {
+          success: `${base}/payment/mp/return`,
+          failure: `${base}/payment/mp/return`,
+          pending: `${base}/payment/mp/return`
+        },
+        auto_return: 'approved',
+        notification_url: `${base}/webhook/mp`
+      }
+    });
+
+    const is_prod = process.env.NODE_ENV === 'production';
+    res.json({ init_point: is_prod ? result.init_point : result.sandbox_init_point });
+  } catch (err) {
+    await supabase.from('orders').delete().eq('id', order_id);
+    console.error('[MercadoPago] init error:', err.message);
+    res.status(500).json({ error: 'Error al iniciar pago. Intenta de nuevo.' });
+  }
+});
+
+// Paso 2: MP redirige aquí tras el pago (GET)
+app.get('/payment/mp/return', async (req, res) => {
+  const { status, external_reference } = req.query;
+
+  if (status === 'approved') {
+    if (external_reference) {
+      await supabase.from('orders').update({ status: 'confirmed' }).eq('id', external_reference);
+
+      const { data: userData } = await supabase
+        .from('users').select('name, email').eq('id', external_reference).single();
+      if (userData?.email) {
+        const { data: orderItems } = await supabase
+          .from('order_items').select('*, products(name)').eq('order_id', external_reference);
+        const emailItems = (orderItems || []).map(i => ({
+          product_name: i.products?.name || i.product_id, quantity: i.quantity, price: i.price
+        }));
+        const { data: ord } = await supabase.from('orders').select('total').eq('id', external_reference).single();
+        sendOrderConfirmation({ email: userData.email, name: userData.name, orderId: external_reference, items: emailItems, total: ord?.total || 0 }).catch(() => {});
+        sendAdminOrderAlert({ orderId: external_reference, customerName: userData.name, customerEmail: userData.email, total: ord?.total || 0, items: emailItems }).catch(() => {});
+      }
+    }
+    return res.redirect(`/?payment=success&order_id=${external_reference || ''}`);
+
+  } else if (status === 'pending') {
+    if (external_reference)
+      await supabase.from('orders').update({ status: 'pending' }).eq('id', external_reference);
+    return res.redirect('/?payment=pending');
+
+  } else {
+    if (external_reference)
+      await supabase.from('orders').update({ status: 'cancelled' }).eq('id', external_reference);
+    return res.redirect('/?payment=cancelled');
+  }
+});
+
+// Webhook IPN de Mercado Pago (notificaciones server-to-server)
+app.post('/webhook/mp', async (req, res) => {
+  res.sendStatus(200); // responder rápido
+  const { type, data } = req.body;
+  if (type !== 'payment' || !data?.id) return;
+
+  try {
+    const { Payment } = require('mercadopago');
+    const payment = await new Payment(mpClient()).get({ id: data.id });
+    const order_id = payment.external_reference;
+    if (!order_id) return;
+
+    if (payment.status === 'approved') {
+      await supabase.from('orders').update({ status: 'confirmed' }).eq('id', order_id);
+    } else if (['rejected', 'cancelled', 'refunded', 'charged_back'].includes(payment.status)) {
+      await supabase.from('orders').update({ status: 'cancelled' }).eq('id', order_id);
+    }
+  } catch (err) {
+    console.error('[MercadoPago] webhook error:', err.message);
+  }
+});
+
+// ==================== FACEBOOK ADS + CLAUDE SCHEDULER ====================
+const Anthropic = require('@anthropic-ai/sdk');
+const cron      = require('node-cron');
+
+const FB_API = 'https://graph.facebook.com/v20.0';
+
+async function fbGet(path, params = {}) {
+  const url = new URL(`${FB_API}${path}`);
+  url.searchParams.set('access_token', process.env.FB_ACCESS_TOKEN);
+  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, String(v)));
+  const r = await fetch(url.toString());
+  const d = await r.json();
+  if (d.error) throw new Error(d.error.message);
+  return d;
+}
+
+async function fbPost(path, body = {}) {
+  const url = new URL(`${FB_API}${path}`);
+  url.searchParams.set('access_token', process.env.FB_ACCESS_TOKEN);
+  const r = await fetch(url.toString(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const d = await r.json();
+  if (d.error) throw new Error(d.error.message);
+  return d;
+}
+
+// Genera copy con Claude Haiku (optimización de tokens — Haiku para tareas creativas estructuradas)
+async function generateFbCopy() {
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const msg = await client.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 300,
+    messages: [{
+      role: 'user',
+      content: `Genera un copy persuasivo para anuncio de Facebook de Foody, una bebida nutricional chilena.
+Detalles del producto:
+- Shake proteico premium. Sabores: Chocolate, Vainilla, Frutilla
+- Precio: $2.200–$2.500 CLP por unidad
+- Target: Chilenos activos, 25–40 años
+- Tono: Directo, energético, casual chileno
+- Diferenciador: Nutrición completa, sin artificiales
+
+Responde ÚNICAMENTE con JSON válido (sin markdown, sin explicaciones):
+{"headline":"máx 40 chars","body":"2-3 oraciones persuasivas","cta":"máx 3 palabras","target_audience":"descripción breve del target"}`
+    }]
+  });
+
+  const text = msg.content[0].text.trim();
+  let parsed;
+  try { parsed = JSON.parse(text); }
+  catch {
+    const m = text.match(/\{[\s\S]*\}/);
+    if (!m) throw new Error('Claude no devolvió JSON válido');
+    parsed = JSON.parse(m[0]);
+  }
+
+  const id = uuidv4();
+  await supabase.from('fb_copies').insert({
+    id,
+    headline: parsed.headline || '',
+    body: parsed.body || '',
+    cta: parsed.cta || 'Comprar',
+    target_audience: parsed.target_audience || '',
+    generated_by: 'claude-haiku',
+    status: 'pending'
+  });
+  return { id, ...parsed, created_at: new Date().toISOString() };
+}
+
+// Métricas en tiempo real de la cuenta publicitaria
+app.get('/api/admin/fb/metrics', requireAdmin, async (_req, res) => {
+  try {
+    const accountId = process.env.FB_AD_ACCOUNT_ID;
+    if (!accountId || accountId === 'act_000000000000000')
+      return res.status(503).json({ error: 'FB_AD_ACCOUNT_ID no configurado' });
+
+    const raw = await fbGet(`/${accountId}/insights`, {
+      fields: 'spend,impressions,clicks,cpc,cpm,actions,action_values',
+      date_preset: 'today',
+      level: 'account'
+    });
+
+    const row = raw.data?.[0] || {};
+    const conversions = parseInt((row.actions || []).find(a => a.action_type === 'purchase')?.value || 0);
+    const revenue     = parseFloat((row.action_values || []).find(a => a.action_type === 'purchase')?.value || 0);
+    const spend       = parseFloat(row.spend || 0);
+    const metrics = {
+      spend,
+      impressions: parseInt(row.impressions || 0),
+      clicks:      parseInt(row.clicks || 0),
+      cpc:         parseFloat(row.cpc || 0),
+      cpm:         parseFloat(row.cpm || 0),
+      roas:        spend > 0 ? revenue / spend : 0,
+      conversions,
+      date: new Date().toISOString().slice(0, 10)
+    };
+
+    const today = metrics.date;
+    await supabase.from('fb_metrics').upsert(
+      { id: today, ...metrics, fetched_at: new Date().toISOString() },
+      { onConflict: 'id' }
+    );
+    res.json(metrics);
+  } catch (e) {
+    console.error('[FB] metrics:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Campañas activas y pausadas
+app.get('/api/admin/fb/campaigns', requireAdmin, async (_req, res) => {
+  try {
+    const accountId = process.env.FB_AD_ACCOUNT_ID;
+    if (!accountId || accountId === 'act_000000000000000')
+      return res.status(503).json({ error: 'FB_AD_ACCOUNT_ID no configurado' });
+
+    const raw = await fbGet(`/${accountId}/campaigns`, {
+      fields: 'id,name,status,objective,daily_budget,created_time',
+      effective_status: JSON.stringify(['ACTIVE', 'PAUSED'])
+    });
+    res.json(raw.data || []);
+  } catch (e) {
+    console.error('[FB] campaigns:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Crear campaña en Facebook + guardar en DB
+app.post('/api/admin/fb/campaigns', requireAdmin, async (req, res) => {
+  const { name, objective = 'OUTCOME_SALES', daily_budget = 5000 } = req.body;
+  if (!name) return res.status(400).json({ error: 'Nombre requerido' });
+  const accountId = process.env.FB_AD_ACCOUNT_ID;
+  if (!accountId || accountId === 'act_000000000000000')
+    return res.status(503).json({ error: 'FB_AD_ACCOUNT_ID no configurado' });
+  try {
+    const result = await fbPost(`/${accountId}/campaigns`, {
+      name, objective, status: 'PAUSED',
+      daily_budget: daily_budget * 100, // centavos de USD
+      special_ad_categories: []
+    });
+    const id = uuidv4();
+    await supabase.from('fb_campaigns').insert({
+      id, fb_campaign_id: result.id, name, objective,
+      status: 'PAUSED', daily_budget
+    });
+    res.json({ id, fb_campaign_id: result.id, name, message: 'Campaña creada (PAUSADA)' });
+  } catch (e) {
+    console.error('[FB] create campaign:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Listar copies (DB local)
+app.get('/api/admin/fb/copies', requireAdmin, async (_req, res) => {
+  const { data, error } = await supabase
+    .from('fb_copies').select('*').order('created_at', { ascending: false }).limit(30);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+// Generar copy con Claude (on-demand desde el panel)
+app.post('/api/admin/fb/copies/generate', requireAdmin, async (_req, res) => {
+  if (!process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY === 'sk-ant-your-key-here')
+    return res.status(503).json({ error: 'ANTHROPIC_API_KEY no configurada' });
+  try {
+    const copy = await generateFbCopy();
+    res.json(copy);
+  } catch (e) {
+    console.error('[Claude] copy gen:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Crear anuncio en Facebook con un copy de la DB
+app.post('/api/admin/fb/ads', requireAdmin, async (req, res) => {
+  const { copy_id, campaign_id, name, daily_budget = 2000 } = req.body;
+  if (!copy_id || !campaign_id) return res.status(400).json({ error: 'copy_id y campaign_id son requeridos' });
+
+  const { data: copy } = await supabase.from('fb_copies').select('*').eq('id', copy_id).single();
+  if (!copy) return res.status(404).json({ error: 'Copy no encontrado' });
+  const { data: camp } = await supabase.from('fb_campaigns').select('*').eq('id', campaign_id).single();
+  if (!camp) return res.status(404).json({ error: 'Campaña no encontrada en DB' });
+
+  const accountId = process.env.FB_AD_ACCOUNT_ID;
+  const pageId    = process.env.FB_PAGE_ID;
+  if (!accountId || accountId === 'act_000000000000000')
+    return res.status(503).json({ error: 'FB_AD_ACCOUNT_ID no configurado' });
+  if (!pageId || pageId === '000000000000000')
+    return res.status(503).json({ error: 'FB_PAGE_ID no configurado' });
+
+  try {
+    const adName = name || `Foody · ${copy.headline}`;
+    const base   = process.env.BASE_URL || 'https://foodyinc.vercel.app';
+
+    // 1) Ad Set
+    const adSet = await fbPost(`/${accountId}/adsets`, {
+      name: adName,
+      campaign_id: camp.fb_campaign_id,
+      daily_budget: daily_budget * 100,
+      billing_event: 'IMPRESSIONS',
+      optimization_goal: 'OFFSITE_CONVERSIONS',
+      targeting: {
+        geo_locations: { countries: ['CL'] },
+        age_min: 22, age_max: 45
+      },
+      status: 'PAUSED'
+    });
+
+    // 2) Creative
+    const creative = await fbPost(`/${accountId}/adcreatives`, {
+      name: adName,
+      object_story_spec: {
+        page_id: pageId,
+        link_data: {
+          message: copy.body,
+          link: base,
+          name: copy.headline,
+          call_to_action: { type: 'SHOP_NOW', value: { link: base } }
+        }
+      }
+    });
+
+    // 3) Ad
+    const ad = await fbPost(`/${accountId}/ads`, {
+      name: adName,
+      adset_id: adSet.id,
+      creative: { creative_id: creative.id },
+      status: 'PAUSED'
+    });
+
+    const id = uuidv4();
+    await supabase.from('fb_ads').insert({
+      id, fb_ad_id: ad.id, fb_campaign_id: camp.fb_campaign_id,
+      copy_id, name: adName, status: 'PAUSED'
+    });
+    await supabase.from('fb_copies').update({ status: 'used' }).eq('id', copy_id);
+
+    res.json({ id, fb_ad_id: ad.id, message: 'Anuncio creado en Facebook (PAUSADO)' });
+  } catch (e) {
+    console.error('[FB] create ad:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Listar anuncios (DB local)
+app.get('/api/admin/fb/ads', requireAdmin, async (_req, res) => {
+  const { data, error } = await supabase
+    .from('fb_ads').select('*, fb_copies(headline, body)')
+    .order('created_at', { ascending: false }).limit(30);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+// Campañas guardadas en DB (sin llamar a FB API — para el modal de crear anuncio)
+app.get('/api/admin/fb/campaigns/local', requireAdmin, async (_req, res) => {
+  const { data, error } = await supabase
+    .from('fb_campaigns').select('*').order('created_at', { ascending: false });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+// ── Scheduler: genera copies a las 9:00, 14:00 y 19:00 (hora Santiago) ──
+cron.schedule('0 9,14,19 * * *', async () => {
+  if (!process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY === 'sk-ant-your-key-here') return;
+  console.log('[Scheduler] Generando copy Facebook Ads...');
+  try {
+    const copy = await generateFbCopy();
+    console.log('[Scheduler] Copy generado:', copy.headline);
+
+    // Si hay una campaña activa en DB, crea el anuncio automáticamente
+    const { data: activeCamps } = await supabase
+      .from('fb_campaigns').select('*').eq('status', 'ACTIVE').limit(1);
+    if (activeCamps?.length > 0) {
+      const camp = activeCamps[0];
+      const pageId    = process.env.FB_PAGE_ID;
+      const accountId = process.env.FB_AD_ACCOUNT_ID;
+      if (accountId && pageId && accountId !== 'act_000000000000000') {
+        const base    = process.env.BASE_URL || 'https://foodyinc.vercel.app';
+        const adName  = `Auto · ${copy.headline}`;
+        const adSet   = await fbPost(`/${accountId}/adsets`, {
+          name: adName, campaign_id: camp.fb_campaign_id,
+          daily_budget: 200000, billing_event: 'IMPRESSIONS',
+          optimization_goal: 'OFFSITE_CONVERSIONS',
+          targeting: { geo_locations: { countries: ['CL'] }, age_min: 22, age_max: 45 },
+          status: 'PAUSED'
+        });
+        const creative = await fbPost(`/${accountId}/adcreatives`, {
+          name: adName,
+          object_story_spec: {
+            page_id: pageId,
+            link_data: {
+              message: copy.body, link: base, name: copy.headline,
+              call_to_action: { type: 'SHOP_NOW', value: { link: base } }
+            }
+          }
+        });
+        const ad = await fbPost(`/${accountId}/ads`, {
+          name: adName, adset_id: adSet.id,
+          creative: { creative_id: creative.id }, status: 'PAUSED'
+        });
+        await supabase.from('fb_ads').insert({
+          id: uuidv4(), fb_ad_id: ad.id, fb_campaign_id: camp.fb_campaign_id,
+          copy_id: copy.id, name: adName, status: 'PAUSED'
+        });
+        await supabase.from('fb_copies').update({ status: 'used' }).eq('id', copy.id);
+        console.log('[Scheduler] Anuncio auto-creado:', adName);
+      }
+    }
+  } catch (e) {
+    console.error('[Scheduler FB]', e.message);
+  }
+}, { timezone: 'America/Santiago' });
 
 // ==================== HEALTH ====================
 app.get('/health', (_req, res) => res.json({ status: 'OK', timestamp: new Date().toISOString() }));
