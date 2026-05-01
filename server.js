@@ -989,6 +989,141 @@ async function sendWhatsAppMessage(to, text) {
   });
 }
 
+// ==================== AGENTES IA ====================
+const AGENT_SYSTEMS = {
+  sales: `Eres Claude Sales, agente de ventas de Foody Inc., empresa chilena de batidos de proteína premium.
+Analiza los datos de ventas en tiempo real y da recomendaciones accionables y concretas.
+Responde siempre en español, de forma directa y profesional. Usa los datos reales disponibles.
+Cuando menciones dinero usa formato chileno ($X.XXX CLP). Sé conciso: máximo 4 párrafos.`,
+
+  marketing: `Eres Claude Marketing, agente de marketing de Foody Inc., empresa chilena de batidos de proteína premium.
+Analiza rendimiento de campañas, sugiere estrategias digitales y genera contenido publicitario.
+Responde siempre en español. Usa las métricas reales de Facebook Ads y el catálogo de productos.
+Sé creativo pero basado en datos. Máximo 4 párrafos por respuesta.`,
+
+  finance: `Eres Claude Finance, agente financiero de Foody Inc., empresa chilena de batidos de proteína premium.
+Analiza la salud financiera del negocio: márgenes, tendencias de ingresos, costos y proyecciones.
+Responde siempre en español. Usa los datos reales de ventas y costos de producción disponibles.
+Da recomendaciones financieras claras y accionables. Máximo 4 párrafos por respuesta.`,
+
+  hr: `Eres Claude HR, agente de recursos humanos de Foody Inc., startup chilena de batidos de proteína en etapa de crecimiento.
+Ayuda con gestión de equipo, onboarding, políticas internas, cultura de empresa y contratación.
+Responde siempre en español. Adapta tus respuestas al contexto de una startup chilena en etapa temprana.
+Sé práctico y directo. Máximo 4 párrafos por respuesta.`
+};
+
+async function buildAgentContext(type) {
+  if (type === 'sales') {
+    const [{ data: orders }, { data: customers }, { data: products }] = await Promise.all([
+      supabase.from('orders').select('id,total,status,order_date').order('order_date', { ascending: false }).limit(100),
+      supabase.from('users').select('id,name').eq('user_type', 'customer'),
+      supabase.from('products').select('name,price,status')
+    ]);
+    const active = (orders || []).filter(o => o.status !== 'cancelled');
+    const revenue = active.reduce((s, o) => s + o.total, 0);
+    const today = new Date().toISOString().slice(0, 10);
+    const todayRev = active.filter(o => o.order_date?.slice(0, 10) === today).reduce((s, o) => s + o.total, 0);
+    const byStatus = ['pending','confirmed','preparing','shipped','delivered'].map(st => ({
+      estado: st, cantidad: active.filter(o => o.status === st).length
+    }));
+    return `DATOS DE VENTAS EN TIEMPO REAL:
+- Total clientes: ${(customers || []).length} | Productos activos: ${(products || []).filter(p => p.status === 'active').length}
+- Ingresos totales históricos: $${revenue.toLocaleString('es-CL')} CLP
+- Ingresos hoy: $${todayRev.toLocaleString('es-CL')} CLP
+- Pipeline de órdenes: ${JSON.stringify(byStatus)}
+- Últimas 10 órdenes: ${JSON.stringify(active.slice(0, 10).map(o => ({ id: o.id.slice(0,8), total: o.total, estado: o.status, fecha: o.order_date?.slice(0,10) })))}`;
+  }
+  if (type === 'marketing') {
+    const [{ data: metrics }, { data: copies }, { data: products }] = await Promise.all([
+      supabase.from('fb_metrics').select('*').order('date', { ascending: false }).limit(30),
+      supabase.from('fb_copies').select('headline,body,status,created_at').order('created_at', { ascending: false }).limit(10),
+      supabase.from('products').select('name,flavor,description,price').eq('status', 'active')
+    ]);
+    const m = metrics || [];
+    const totSpend = m.reduce((s, x) => s + x.spend, 0);
+    const totImpr  = m.reduce((s, x) => s + x.impressions, 0);
+    const totClicks = m.reduce((s, x) => s + x.clicks, 0);
+    const avgRoas = m.length ? (m.reduce((s, x) => s + x.roas, 0) / m.length).toFixed(2) : 0;
+    return `DATOS DE MARKETING EN TIEMPO REAL:
+- FB Ads últimos 30 días: Gasto $${totSpend.toLocaleString('es-CL')}, Impresiones ${totImpr.toLocaleString('es-CL')}, Clicks ${totClicks}, ROAS promedio ${avgRoas}
+- Métricas diarias recientes: ${JSON.stringify(m.slice(0, 7).map(x => ({ fecha: x.date, gasto: x.spend, roas: x.roas, cpc: x.cpc })))}
+- Copies recientes: ${JSON.stringify((copies || []).map(c => ({ headline: c.headline, estado: c.status })))}
+- Catálogo activo: ${JSON.stringify((products || []).map(p => ({ nombre: p.name, sabor: p.flavor, precio: p.price })))}`;
+  }
+  if (type === 'finance') {
+    const [{ data: orders }, { data: costs }] = await Promise.all([
+      supabase.from('orders').select('total,status,order_date').order('order_date', { ascending: false }).limit(200),
+      supabase.from('production_costs').select('product_id,total_unit_cost,margin_percentage,selling_price')
+    ]);
+    const active = (orders || []).filter(o => o.status !== 'cancelled');
+    const revenue = active.reduce((s, o) => s + o.total, 0);
+    const now = new Date();
+    const thisM = now.toISOString().slice(0, 7);
+    const prevM = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 7);
+    const thisMonthRev  = active.filter(o => o.order_date?.slice(0,7) === thisM).reduce((s,o) => s+o.total, 0);
+    const prevMonthRev  = active.filter(o => o.order_date?.slice(0,7) === prevM).reduce((s,o) => s+o.total, 0);
+    const variation = prevMonthRev > 0 ? ((thisMonthRev/prevMonthRev - 1)*100).toFixed(1)+'%' : 'sin datos previos';
+    const last7 = [...Array(7)].map((_, i) => {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const ds = d.toISOString().slice(0, 10);
+      return { fecha: ds, ingresos: active.filter(o => o.order_date?.slice(0,10) === ds).reduce((s,o) => s+o.total, 0) };
+    });
+    return `DATOS FINANCIEROS EN TIEMPO REAL:
+- Ingresos totales históricos: $${revenue.toLocaleString('es-CL')} CLP (${active.length} órdenes)
+- Este mes (${thisM}): $${thisMonthRev.toLocaleString('es-CL')} CLP | Mes anterior: $${prevMonthRev.toLocaleString('es-CL')} CLP | Variación: ${variation}
+- Ingresos últimos 7 días: ${JSON.stringify(last7)}
+- Costos de producción por producto: ${JSON.stringify(costs || [])}`;
+  }
+  if (type === 'hr') {
+    const { data: users } = await supabase.from('users').select('name,user_type,created_at');
+    const admins = (users || []).filter(u => u.user_type === 'admin');
+    const customers = (users || []).filter(u => u.user_type === 'customer');
+    return `CONTEXTO DE LA EMPRESA:
+- Empresa: Foody Inc. — batidos de proteína premium, Chile, etapa de crecimiento temprano
+- Equipo admin actual: ${admins.length} persona(s) — ${admins.map(u => u.name).join(', ')}
+- Base de clientes: ${customers.length} clientes registrados
+- Rubro: FoodTech / NutriTech, venta directa al consumidor (D2C) online`;
+  }
+  return '';
+}
+
+app.post('/api/agent/:type', requireAdmin, async (req, res) => {
+  const { type } = req.params;
+  if (!['sales','marketing','finance','hr'].includes(type))
+    return res.status(400).json({ error: 'Agente no válido' });
+  if (!process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY === 'sk-ant-your-key-here')
+    return res.status(503).json({ error: 'ANTHROPIC_API_KEY no configurada. Agrégala en las variables de entorno.' });
+  const { messages } = req.body;
+  if (!Array.isArray(messages) || !messages.length)
+    return res.status(400).json({ error: 'messages requerido' });
+  try {
+    const context = await buildAgentContext(type);
+    const system  = AGENT_SYSTEMS[type] + '\n\n' + context;
+    const client  = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no'
+    });
+    const stream = client.messages.stream({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1024,
+      system,
+      messages: messages.slice(-10)
+    });
+    for await (const chunk of stream) {
+      if (chunk.type === 'content_block_delta' && chunk.delta?.type === 'text_delta')
+        res.write(`data: ${JSON.stringify({ text: chunk.delta.text })}\n\n`);
+    }
+    res.write('data: [DONE]\n\n');
+    res.end();
+  } catch (e) {
+    if (!res.headersSent) res.status(500).json({ error: e.message });
+    else { res.write(`data: ${JSON.stringify({ error: e.message })}\n\n`); res.end(); }
+  }
+});
+
 app.use((_req, res) => res.status(404).json({ error: 'Ruta no encontrada' }));
 app.use((err, _req, res, _next) => { console.error(err.stack); res.status(500).json({ error: 'Error interno del servidor' }); });
 

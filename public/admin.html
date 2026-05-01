@@ -341,6 +341,56 @@
 
     /* ── ORDER ID CODE ── */
     .order-id { font-size: .74rem; color: #aaa; font-family: monospace; }
+
+    /* ── AGENTES IA ── */
+    .agent-header { display:flex; align-items:center; gap:1rem; margin-bottom:1.5rem; }
+    .agent-avatar {
+      width:52px; height:52px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      font-size:1.3rem; flex-shrink:0;
+    }
+    .agent-avatar.sales    { background:linear-gradient(135deg,#1d4ed8,#3b82f6); }
+    .agent-avatar.marketing{ background:linear-gradient(135deg,#6d28d9,#a78bfa); }
+    .agent-avatar.finance  { background:linear-gradient(135deg,#065f46,#10b981); }
+    .agent-avatar.hr       { background:linear-gradient(135deg,#92400e,#f59e0b); }
+    .agent-info { flex:1; }
+    .agent-name { font-size:1.2rem; font-weight:700; color:#1a1a1a; }
+    .agent-desc { font-size:.83rem; color:#888; margin-top:2px; }
+    .agent-status { display:flex; align-items:center; gap:.4rem; font-size:.78rem; color:#10b981; font-weight:600; }
+    .agent-dot { width:7px; height:7px; border-radius:50%; background:#10b981; animation:pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    .agent-kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:.75rem; margin-bottom:1.5rem; }
+    .agent-kpi { background:#f8f8f6; border:1px solid #ececec; border-radius:10px; padding:.9rem 1rem; }
+    .agent-kpi__label { font-size:.72rem; color:#999; text-transform:uppercase; letter-spacing:.05em; margin-bottom:.3rem; }
+    .agent-kpi__val { font-size:1.3rem; font-weight:700; color:#1a1a1a; }
+
+    .chat-wrap { display:flex; flex-direction:column; height:460px; border:1px solid #ececec; border-radius:14px; overflow:hidden; background:#fff; }
+    .chat-messages { flex:1; overflow-y:auto; padding:1.2rem; display:flex; flex-direction:column; gap:.8rem; scroll-behavior:smooth; }
+    .chat-messages::-webkit-scrollbar { width:4px; }
+    .chat-messages::-webkit-scrollbar-thumb { background:#e0e0e0; border-radius:4px; }
+    .chat-bubble { max-width:78%; padding:.75rem 1rem; border-radius:14px; font-size:.875rem; line-height:1.55; white-space:pre-wrap; }
+    .chat-bubble.user { align-self:flex-end; background:#1a1a1a; color:#fff; border-bottom-right-radius:4px; }
+    .chat-bubble.assistant { align-self:flex-start; background:#f4f4f0; color:#1a1a1a; border-bottom-left-radius:4px; }
+    .chat-bubble.assistant.typing::after { content:'▋'; animation:blink .7s infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+    .chat-welcome { text-align:center; color:#bbb; font-size:.82rem; margin:auto; padding:2rem; }
+    .chat-welcome svg { opacity:.3; display:block; margin:0 auto .8rem; }
+
+    .chat-bar { display:flex; gap:.6rem; padding:.9rem 1rem; border-top:1px solid #ececec; background:#fafaf8; }
+    .chat-bar input {
+      flex:1; border:1px solid #e0e0e0; border-radius:8px; padding:.6rem .9rem;
+      font-size:.875rem; outline:none; font-family:inherit;
+      transition:border-color .2s;
+    }
+    .chat-bar input:focus { border-color:#C8A55E; }
+    .chat-bar button { padding:.6rem 1.2rem; background:#1a1a1a; color:#fff; border:none; border-radius:8px; font-size:.85rem; font-weight:600; cursor:pointer; white-space:nowrap; transition:background .15s; }
+    .chat-bar button:hover { background:#333; }
+    .chat-bar button:disabled { background:#ccc; cursor:not-allowed; }
+
+    .agent-suggestions { display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:1rem; }
+    .agent-chip { padding:.38rem .85rem; background:#f0f0ec; border:1px solid #e0e0e0; border-radius:999px; font-size:.78rem; color:#555; cursor:pointer; transition:all .15s; }
+    .agent-chip:hover { background:#e8e4d8; border-color:#C8A55E; color:#1a1a1a; }
   </style>
 </head>
 <body>
@@ -430,6 +480,35 @@
           <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
         </svg>
         Facebook Ads
+      </div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Empresa IA</div>
+      <div class="nav-item" onclick="showView('agent-sales', this)">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+        Ventas
+      </div>
+      <div class="nav-item" onclick="showView('agent-marketing', this)">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+        </svg>
+        Marketing
+      </div>
+      <div class="nav-item" onclick="showView('agent-finance', this)">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+        </svg>
+        Finanzas
+      </div>
+      <div class="nav-item" onclick="showView('agent-hr', this)">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        RRHH
       </div>
     </div>
 
@@ -764,6 +843,138 @@
   </div>
 </div>
 
+<!-- ── AGENTE: VENTAS ── -->
+<div class="view" id="view-agent-sales">
+  <div class="agent-header">
+    <div class="agent-avatar sales">📈</div>
+    <div class="agent-info">
+      <div class="agent-name">Claude Sales</div>
+      <div class="agent-desc">Analista de ventas con acceso a tus datos en tiempo real</div>
+    </div>
+    <div class="agent-status"><div class="agent-dot"></div>Activo</div>
+  </div>
+  <div class="agent-kpis" id="salesKpis">
+    <div class="agent-kpi"><div class="agent-kpi__label">Ingresos Totales</div><div class="agent-kpi__val" id="sk-revenue">—</div></div>
+    <div class="agent-kpi"><div class="agent-kpi__label">Órdenes Activas</div><div class="agent-kpi__val" id="sk-orders">—</div></div>
+    <div class="agent-kpi"><div class="agent-kpi__label">Ingresos Hoy</div><div class="agent-kpi__val" id="sk-today">—</div></div>
+    <div class="agent-kpi"><div class="agent-kpi__label">Clientes</div><div class="agent-kpi__val" id="sk-customers">—</div></div>
+  </div>
+  <div class="agent-suggestions">
+    <span class="agent-chip" onclick="askAgent('sales',this.textContent)">¿Cómo van las ventas esta semana?</span>
+    <span class="agent-chip" onclick="askAgent('sales',this.textContent)">¿Cuál es mi ticket promedio?</span>
+    <span class="agent-chip" onclick="askAgent('sales',this.textContent)">¿Qué órdenes están pendientes?</span>
+    <span class="agent-chip" onclick="askAgent('sales',this.textContent)">Dame una proyección del mes</span>
+  </div>
+  <div class="chat-wrap">
+    <div class="chat-messages" id="chat-sales">
+      <div class="chat-welcome"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Pregúntame sobre tus ventas</div>
+    </div>
+    <div class="chat-bar">
+      <input type="text" id="input-sales" placeholder="¿Cuánto vendí esta semana?" onkeydown="if(event.key==='Enter')sendAgent('sales')">
+      <button id="btn-sales" onclick="sendAgent('sales')">Enviar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── AGENTE: MARKETING ── -->
+<div class="view" id="view-agent-marketing">
+  <div class="agent-header">
+    <div class="agent-avatar marketing">⭐</div>
+    <div class="agent-info">
+      <div class="agent-name">Claude Marketing</div>
+      <div class="agent-desc">Estratega digital con acceso a tus métricas de Facebook Ads</div>
+    </div>
+    <div class="agent-status"><div class="agent-dot"></div>Activo</div>
+  </div>
+  <div class="agent-kpis" id="marketingKpis">
+    <div class="agent-kpi"><div class="agent-kpi__label">Gasto FB (30d)</div><div class="agent-kpi__val" id="mk-spend">—</div></div>
+    <div class="agent-kpi"><div class="agent-kpi__label">ROAS Promedio</div><div class="agent-kpi__val" id="mk-roas">—</div></div>
+    <div class="agent-kpi"><div class="agent-kpi__label">Clicks</div><div class="agent-kpi__val" id="mk-clicks">—</div></div>
+    <div class="agent-kpi"><div class="agent-kpi__label">CPC Promedio</div><div class="agent-kpi__val" id="mk-cpc">—</div></div>
+  </div>
+  <div class="agent-suggestions">
+    <span class="agent-chip" onclick="askAgent('marketing',this.textContent)">¿Cómo está rindiendo mi campaña?</span>
+    <span class="agent-chip" onclick="askAgent('marketing',this.textContent)">Genera un copy para Foody Frutilla</span>
+    <span class="agent-chip" onclick="askAgent('marketing',this.textContent)">¿Cuál es mi mejor anuncio?</span>
+    <span class="agent-chip" onclick="askAgent('marketing',this.textContent)">Ideas para aumentar el ROAS</span>
+  </div>
+  <div class="chat-wrap">
+    <div class="chat-messages" id="chat-marketing">
+      <div class="chat-welcome"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Pregúntame sobre marketing y campañas</div>
+    </div>
+    <div class="chat-bar">
+      <input type="text" id="input-marketing" placeholder="¿Cómo mejorar mi ROAS?" onkeydown="if(event.key==='Enter')sendAgent('marketing')">
+      <button id="btn-marketing" onclick="sendAgent('marketing')">Enviar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── AGENTE: FINANZAS ── -->
+<div class="view" id="view-agent-finance">
+  <div class="agent-header">
+    <div class="agent-avatar finance">💰</div>
+    <div class="agent-info">
+      <div class="agent-name">Claude Finance</div>
+      <div class="agent-desc">Analista financiero con acceso a ingresos, costos y márgenes</div>
+    </div>
+    <div class="agent-status"><div class="agent-dot"></div>Activo</div>
+  </div>
+  <div class="agent-kpis" id="financeKpis">
+    <div class="agent-kpi"><div class="agent-kpi__label">Ingresos Este Mes</div><div class="agent-kpi__val" id="fn-month">—</div></div>
+    <div class="agent-kpi"><div class="agent-kpi__label">Mes Anterior</div><div class="agent-kpi__val" id="fn-prev">—</div></div>
+    <div class="agent-kpi"><div class="agent-kpi__label">Variación</div><div class="agent-kpi__val" id="fn-var">—</div></div>
+    <div class="agent-kpi"><div class="agent-kpi__label">Total Histórico</div><div class="agent-kpi__val" id="fn-total">—</div></div>
+  </div>
+  <div class="agent-suggestions">
+    <span class="agent-chip" onclick="askAgent('finance',this.textContent)">¿Cuál es mi margen de ganancia?</span>
+    <span class="agent-chip" onclick="askAgent('finance',this.textContent)">¿Cómo van los costos de producción?</span>
+    <span class="agent-chip" onclick="askAgent('finance',this.textContent)">¿Cuándo llego al break-even?</span>
+    <span class="agent-chip" onclick="askAgent('finance',this.textContent)">Dame una proyección a 3 meses</span>
+  </div>
+  <div class="chat-wrap">
+    <div class="chat-messages" id="chat-finance">
+      <div class="chat-welcome"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Pregúntame sobre las finanzas del negocio</div>
+    </div>
+    <div class="chat-bar">
+      <input type="text" id="input-finance" placeholder="¿Cuál es mi rentabilidad?" onkeydown="if(event.key==='Enter')sendAgent('finance')">
+      <button id="btn-finance" onclick="sendAgent('finance')">Enviar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── AGENTE: RRHH ── -->
+<div class="view" id="view-agent-hr">
+  <div class="agent-header">
+    <div class="agent-avatar hr">👥</div>
+    <div class="agent-info">
+      <div class="agent-name">Claude HR</div>
+      <div class="agent-desc">Especialista en recursos humanos y cultura organizacional</div>
+    </div>
+    <div class="agent-status"><div class="agent-dot"></div>Activo</div>
+  </div>
+  <div class="agent-kpis" id="hrKpis">
+    <div class="agent-kpi"><div class="agent-kpi__label">Equipo Actual</div><div class="agent-kpi__val" id="hr-team">—</div></div>
+    <div class="agent-kpi"><div class="agent-kpi__label">Clientes Activos</div><div class="agent-kpi__val" id="hr-customers">—</div></div>
+    <div class="agent-kpi"><div class="agent-kpi__label">Etapa</div><div class="agent-kpi__val" style="font-size:.95rem;">Early Stage</div></div>
+    <div class="agent-kpi"><div class="agent-kpi__label">País</div><div class="agent-kpi__val" style="font-size:.95rem;">🇨🇱 Chile</div></div>
+  </div>
+  <div class="agent-suggestions">
+    <span class="agent-chip" onclick="askAgent('hr',this.textContent)">¿Cómo hacer un buen onboarding?</span>
+    <span class="agent-chip" onclick="askAgent('hr',this.textContent)">Redacta una descripción de trabajo para repartidor</span>
+    <span class="agent-chip" onclick="askAgent('hr',this.textContent)">¿Qué políticas básicas debería tener?</span>
+    <span class="agent-chip" onclick="askAgent('hr',this.textContent)">Ideas para cultura de empresa en startup</span>
+  </div>
+  <div class="chat-wrap">
+    <div class="chat-messages" id="chat-hr">
+      <div class="chat-welcome"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Pregúntame sobre gestión de equipo</div>
+    </div>
+    <div class="chat-bar">
+      <input type="text" id="input-hr" placeholder="¿Cómo contratar mi primer empleado?" onkeydown="if(event.key==='Enter')sendAgent('hr')">
+      <button id="btn-hr" onclick="sendAgent('hr')">Enviar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── TOAST ── -->
 <div class="toast" id="toast"></div>
 
@@ -853,9 +1064,13 @@
     const titles = {
       dashboard: 'Dashboard', orders: 'Órdenes',
       products: 'Productos', subscriptions: 'Suscripciones',
-      customers: 'Clientes', facebook: 'Facebook Ads'
+      customers: 'Clientes', facebook: 'Facebook Ads',
+      'agent-sales': 'Claude Sales — Ventas',
+      'agent-marketing': 'Claude Marketing',
+      'agent-finance': 'Claude Finance — Finanzas',
+      'agent-hr': 'Claude HR — Recursos Humanos'
     };
-    document.getElementById('topbarTitle').textContent = titles[view];
+    document.getElementById('topbarTitle').textContent = titles[view] || view;
     loadView(view);
   }
 
@@ -866,6 +1081,10 @@
     else if (view === 'subscriptions') loadSubscriptions();
     else if (view === 'customers') loadCustomers();
     else if (view === 'facebook') loadFacebook();
+    else if (view === 'agent-sales') loadAgentView('sales');
+    else if (view === 'agent-marketing') loadAgentView('marketing');
+    else if (view === 'agent-finance') loadAgentView('finance');
+    else if (view === 'agent-hr') loadAgentView('hr');
   }
 
   // ─── UTILS ───
@@ -1514,6 +1733,143 @@
       loadFbAds();
       loadFbCopies();
     } catch (e) { toast(e.message, 'error'); }
+  }
+
+  // ─── AGENTES IA ───
+  const agentHistory = { sales: [], marketing: [], finance: [], hr: [] };
+
+  async function loadAgentView(type) {
+    try {
+      const [stats, orders] = await Promise.all([
+        api('/api/admin/stats').catch(() => null),
+        api('/api/admin/orders').catch(() => [])
+      ]);
+      const active = (orders || []).filter(o => o.status !== 'cancelled');
+      const revenue = active.reduce((s, o) => s + o.total, 0);
+      const today = new Date().toISOString().slice(0, 10);
+      const todayRev = active.filter(o => o.order_date?.slice(0, 10) === today).reduce((s, o) => s + o.total, 0);
+
+      if (type === 'sales') {
+        document.getElementById('sk-revenue').textContent   = clp(revenue);
+        document.getElementById('sk-orders').textContent    = active.length;
+        document.getElementById('sk-today').textContent     = clp(todayRev);
+        document.getElementById('sk-customers').textContent = stats?.total_customers ?? '—';
+      }
+      if (type === 'finance') {
+        const now = new Date();
+        const thisM = now.toISOString().slice(0, 7);
+        const prevM = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 7);
+        const thisMonthRev = active.filter(o => o.order_date?.slice(0, 7) === thisM).reduce((s, o) => s + o.total, 0);
+        const prevMonthRev = active.filter(o => o.order_date?.slice(0, 7) === prevM).reduce((s, o) => s + o.total, 0);
+        const varPct = prevMonthRev > 0 ? ((thisMonthRev / prevMonthRev - 1) * 100).toFixed(1) + '%' : 'N/A';
+        document.getElementById('fn-month').textContent = clp(thisMonthRev);
+        document.getElementById('fn-prev').textContent  = clp(prevMonthRev);
+        document.getElementById('fn-var').textContent   = varPct;
+        document.getElementById('fn-total').textContent = clp(revenue);
+      }
+      if (type === 'marketing') {
+        try {
+          const fb = await api('/api/admin/fb/metrics');
+          const m = fb || [];
+          const totSpend  = m.reduce((s, x) => s + x.spend, 0);
+          const avgRoas   = m.length ? (m.reduce((s, x) => s + x.roas, 0) / m.length).toFixed(2) : 0;
+          const totClicks = m.reduce((s, x) => s + x.clicks, 0);
+          const avgCpc    = m.length ? (m.reduce((s, x) => s + x.cpc, 0) / m.length).toFixed(0) : 0;
+          document.getElementById('mk-spend').textContent  = clp(totSpend);
+          document.getElementById('mk-roas').textContent   = avgRoas + 'x';
+          document.getElementById('mk-clicks').textContent = totClicks.toLocaleString('es-CL');
+          document.getElementById('mk-cpc').textContent    = clp(avgCpc);
+        } catch { /* FB no configurado */ }
+      }
+      if (type === 'hr') {
+        document.getElementById('hr-team').textContent      = stats ? '1+ personas' : '—';
+        document.getElementById('hr-customers').textContent = stats?.total_customers ?? '—';
+      }
+    } catch (e) { console.warn('loadAgentView', e); }
+  }
+
+  function askAgent(type, text) {
+    document.getElementById('input-' + type).value = text;
+    sendAgent(type);
+  }
+
+  async function sendAgent(type) {
+    const input  = document.getElementById('input-' + type);
+    const btn    = document.getElementById('btn-' + type);
+    const chatEl = document.getElementById('chat-' + type);
+    const text   = input.value.trim();
+    if (!text || btn.disabled) return;
+
+    input.value = '';
+    btn.disabled = true;
+
+    // Remove welcome placeholder
+    chatEl.querySelector('.chat-welcome')?.remove();
+
+    // User bubble
+    agentHistory[type].push({ role: 'user', content: text });
+    const userBubble = document.createElement('div');
+    userBubble.className = 'chat-bubble user';
+    userBubble.textContent = text;
+    chatEl.appendChild(userBubble);
+    chatEl.scrollTop = chatEl.scrollHeight;
+
+    // Assistant bubble (streaming)
+    const asstBubble = document.createElement('div');
+    asstBubble.className = 'chat-bubble assistant typing';
+    chatEl.appendChild(asstBubble);
+    chatEl.scrollTop = chatEl.scrollHeight;
+
+    let fullText = '';
+    try {
+      const res = await fetch(`/api/agent/${type}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-auth-token': token },
+        body: JSON.stringify({ messages: agentHistory[type] })
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        asstBubble.classList.remove('typing');
+        asstBubble.textContent = '⚠️ ' + (err.error || 'Error del servidor');
+        agentHistory[type].pop();
+        return;
+      }
+
+      const reader  = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const raw = line.slice(6);
+          if (raw === '[DONE]') continue;
+          try {
+            const { text: chunk, error } = JSON.parse(raw);
+            if (error) { asstBubble.textContent = '⚠️ ' + error; break; }
+            if (chunk) { fullText += chunk; asstBubble.textContent = fullText; }
+          } catch { /* ignore malformed chunk */ }
+        }
+        chatEl.scrollTop = chatEl.scrollHeight;
+      }
+
+      asstBubble.classList.remove('typing');
+      agentHistory[type].push({ role: 'assistant', content: fullText });
+    } catch (e) {
+      asstBubble.classList.remove('typing');
+      asstBubble.textContent = '⚠️ Error de conexión: ' + e.message;
+      agentHistory[type].pop();
+    } finally {
+      btn.disabled = false;
+      input.focus();
+      chatEl.scrollTop = chatEl.scrollHeight;
+    }
   }
 
   // ─── INIT ───
